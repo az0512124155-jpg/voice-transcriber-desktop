@@ -999,13 +999,20 @@ pub fn run(cli_args: CliArgs) {
 
             // Create main window programmatically so we can set data_directory
             // for portable mode (redirects WebView2 cache to portable Data dir)
+            //
+            // The window opens at most of the primary display rather than a
+            // fixed 720x600: the settings surface has a sidebar plus a long
+            // column of controls, and the fixed size made it read as a cramped
+            // dialog on any large screen.
+            let (window_width, window_height) = utils::opening_window_size(app.handle());
             let mut win_builder =
                 tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("/".into()))
                     .title("Voice Transcriber")
-                    .inner_size(utils::MAIN_WINDOW_SIZE.0, utils::MAIN_WINDOW_SIZE.1)
+                    .inner_size(window_width, window_height)
                     .min_inner_size(utils::MAIN_WINDOW_SIZE.0, utils::MAIN_WINDOW_SIZE.1)
                     .resizable(true)
                     .maximizable(true)
+                    .center()
                     .visible(false);
 
             if let Some(data_dir) = portable::data_dir() {
@@ -1025,9 +1032,7 @@ pub fn run(cli_args: CliArgs) {
             {
                 let bar = utils::measure_title_bar(&main_window);
                 if bar > 0.0 {
-                    let (width, height) = utils::MAIN_WINDOW_SIZE;
-                    let size = tauri::LogicalSize::new(width, height + bar);
-                    let _ = main_window.set_min_size(Some(size));
+                    let size = tauri::LogicalSize::new(window_width, window_height + bar);
                     let _ = main_window.set_size(size);
                     let _ = main_window.center();
                 }

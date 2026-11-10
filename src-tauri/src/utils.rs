@@ -22,8 +22,40 @@ pub fn redact_text(text: &str) -> &str {
     }
 }
 
-/// Main window's opening and minimum page size, in logical pixels.
+/// Smallest page size the layout still works at, in logical pixels.
 pub const MAIN_WINDOW_SIZE: (f64, f64) = (720.0, 600.0);
+
+/// Share of the primary display the window opens at. The app is a full
+/// settings surface, not a dialog: opening at a fixed 720x600 left it looking
+/// cramped on a large screen (and the same app looked roomy on a 1080p laptop).
+const OPENING_WINDOW_FRACTION: f64 = 0.85;
+
+/// Ceiling for the opening size, so a 5K display does not stretch the layout
+/// into one endless column of rows.
+const MAX_WINDOW_SIZE: (f64, f64) = (1100.0, 900.0);
+
+/// The size the main window opens at, in logical pixels: most of the primary
+/// display, clamped between the minimum layout size and `MAX_WINDOW_SIZE`.
+///
+/// Falls back to the minimum size when no monitor is reported (headless CI,
+/// remote sessions), so this never fails.
+pub fn opening_window_size(app: &AppHandle) -> (f64, f64) {
+    let (min_width, min_height) = MAIN_WINDOW_SIZE;
+    let Ok(Some(monitor)) = app.primary_monitor() else {
+        return MAIN_WINDOW_SIZE;
+    };
+
+    let scale = monitor.scale_factor();
+    let scale = if scale > 0.0 { scale } else { 1.0 };
+    let physical = monitor.size();
+
+    let width = (physical.width as f64 / scale * OPENING_WINDOW_FRACTION)
+        .clamp(min_width, MAX_WINDOW_SIZE.0);
+    let height = (physical.height as f64 / scale * OPENING_WINDOW_FRACTION)
+        .clamp(min_height, MAX_WINDOW_SIZE.1);
+
+    (width.round(), height.round())
+}
 
 /// Title bar height in logical pixels (macOS draws it inside the inner size).
 /// Call on the main thread.

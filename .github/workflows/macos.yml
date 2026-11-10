@@ -5,9 +5,13 @@ name: macOS build
 # (the two speech models, ~148 MB) or downloaded below (the sherpa-onnx
 # dylibs, which are 60 MB and do not belong in git).
 #
-# The result is an unsigned build: Gatekeeper will warn the first time it is
-# opened on someone else's Mac, and the answer to that is a Developer ID
-# certificate, not a build setting. See README, "Opening the Mac build".
+# Two jobs, because a Mac is either Apple Silicon or Intel and one binary
+# cannot serve both: transcribe-cpp links Metal on arm64 and CPU-only on
+# x86_64, and the Rust standard library is per-architecture.
+#
+# The result is unsigned: Gatekeeper will warn the first time it is opened on
+# someone else's Mac, and the answer to that is a Developer ID certificate,
+# not a build setting. See README, "Building the Mac app".
 
 on:
   workflow_dispatch:
@@ -20,9 +24,19 @@ permissions:
 
 jobs:
   macos:
-    name: macOS (Apple Silicon)
-    runs-on: macos-latest
+    name: macOS (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-latest
+            target: aarch64-apple-darwin
+          - arch: x86_64
+            runner: macos-15-intel
+            target: x86_64-apple-darwin
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,7 +44,8 @@ jobs:
           fetch-depth: 1
 
       # 148 MB of models live in the repository, so no model download step is
-      # needed here. This only fetches the speech engine itself.
+      # needed here. This only fetches the speech engine itself. The dylibs are
+      # universal2, so the same two files serve both jobs.
       - name: Fetch the sherpa-onnx dylibs
         run: |
           set -euo pipefail
@@ -45,7 +60,6 @@ jobs:
           cp "$TMP/sherpa-onnx-v${VERSION}-osx-universal2-shared/lib/libsherpa-onnx-c-api.dylib" \
              "$TMP/sherpa-onnx-v${VERSION}-osx-universal2-shared/lib/libonnxruntime.dylib" \
              src-tauri/resources/sherpa/
-          # Both are universal2, so one copy serves Intel and Apple Silicon.
           lipo -info src-tauri/resources/sherpa/libsherpa-onnx-c-api.dylib
           lipo -info src-tauri/resources/sherpa/libonnxruntime.dylib
           ls -la src-tauri/resources/sherpa/
@@ -63,13 +77,13 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-apple-darwin
+          targets: ${{ matrix.target }}
 
       - name: Cache Rust build
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
-          key: macos-aarch64
+          key: macos-${{ matrix.arch }}
 
       - name: Install frontend dependencies
         run: bun install
@@ -83,14 +97,14 @@ jobs:
         run: |
           set -euo pipefail
           npx tauri build \
-            --target aarch64-apple-darwin \
+            --target ${{ matrix.target }} \
             --bundles app,dmg \
             --config '{"bundle":{"macOS":{"minimumSystemVersion":"11.0","hardenedRuntime":false,"entitlements":"Entitlements.plist"}}}'
 
       - name: Verify the bundle contains everything it needs
         run: |
           set -euo pipefail
-          APP="src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Voice Transcriber.app"
+          APP="src-tauri/target/${{ matrix.target }}/release/bundle/macos/Voice Transcriber.app"
           test -d "$APP" || { echo "the .app was not produced"; exit 1; }
           RES="$APP/Contents/Resources"
           for f in \
@@ -109,6 +123,10 @@ jobs:
           done
           /usr/libexec/PlistBuddy -c "Print :NSMicrophoneUsageDescription" \
             "$APP/Contents/Info.plist"
+          # Prove the binary really is the architecture we asked for: an
+          # Intel build that silently came out arm64 would only fail on the
+          # user's machine.
+          lipo -info "$APP/Contents/MacOS/Voice Transcriber"
           # Not fatal: an ad-hoc signature is all we can produce without a
           # Developer ID, and the point of this step is to prove the bundle is
           # complete, not to prove it is signed.
@@ -117,7 +135,7 @@ jobs:
       - name: Upload the dmg
         uses: actions/upload-artifact@v4
         with:
-          name: VoiceTranscriber-macos-arm64
-          path: src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+          name: VoiceTranscriber-macos-${{ matrix.arch }}
+          path: src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
           if-no-files-found: error
           retention-days: 30

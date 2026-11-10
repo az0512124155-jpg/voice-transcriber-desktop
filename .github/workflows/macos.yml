@@ -129,19 +129,21 @@ jobs:
           done
           /usr/libexec/PlistBuddy -c "Print :NSMicrophoneUsageDescription" \
             "$APP/Contents/Info.plist"
-          # The web UI is as much a part of the bundle as the models. If the
-          # stylesheet is missing, or still wrapped in cascade layers that this
-          # Mac's WebKit ignores, the window opens as an unstyled wall of boxes.
-          test -f "$RES/index.html" || { echo "missing from the bundle: $RES/index.html"; exit 1; }
-          ls "$RES"/assets/*.css >/dev/null 2>&1 || { echo "no stylesheet in the bundle"; exit 1; }
-          ls "$RES"/assets/*.js  >/dev/null 2>&1 || { echo "no script in the bundle"; exit 1; }
-          if grep -q '@layer' "$RES"/assets/*.css; then
+          # The web UI is not in Contents/Resources: Tauri compiles
+          # `frontendDist` into the executable, so `dist/` is the last place it
+          # exists as files. Check it there — if the stylesheet is missing, or
+          # still wrapped in cascade layers that older WebKit ignores, the
+          # window opens as an unstyled wall of boxes.
+          test -f dist/index.html || { echo "the built frontend is missing"; exit 1; }
+          ls dist/assets/*.css >/dev/null 2>&1 || { echo "no stylesheet was built"; exit 1; }
+          ls dist/assets/*.js  >/dev/null 2>&1 || { echo "no script was built"; exit 1; }
+          if grep -q '@layer' dist/assets/*.css; then
             echo "the stylesheet still uses @layer, which macOS 11/12 WebKit ignores"
             exit 1
           fi
-          grep -q -- '--color-background' "$RES"/assets/*.css \
+          grep -q -- '--color-background' dist/assets/*.css \
             || { echo "the theme tokens are missing from the stylesheet"; exit 1; }
-          echo "ok the web UI is in the bundle, layered-free and carrying the theme"
+          echo "ok the web UI is layered-free and carries the theme"
           # Prove the binary really is the architecture we asked for: an
           # Intel build that silently came out arm64 would only fail on the
           # user's machine.

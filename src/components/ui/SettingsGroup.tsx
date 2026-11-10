@@ -6,26 +6,18 @@ interface SettingsGroupProps {
   children: React.ReactNode;
 }
 
+/** A titled card of settings rows. The card draws its own dividers, so the
+ *  rows inside do not need a border of their own. */
 export const SettingsGroup: React.FC<SettingsGroupProps> = ({
   title,
   description,
   children,
 }) => {
   return (
-    <div className="space-y-2">
-      {title && (
-        <div className="px-4">
-          <h2 className="text-xs font-medium text-ink-3 uppercase tracking-wide">
-            {title}
-          </h2>
-          {description && (
-            <p className="text-xs text-ink-3 mt-1">{description}</p>
-          )}
-        </div>
-      )}
-      <div className="bg-background border border-line rounded-lg overflow-visible">
-        <div className="divide-y divide-line">{children}</div>
-      </div>
-    </div>
+    <section className="vt-group">
+      {title && <h2 className="vt-group__title">{title}</h2>}
+      {description && <p className="vt-group__description">{description}</p>}
+      <div className="vt-group__card">{children}</div>
+    </section>
   );
 };

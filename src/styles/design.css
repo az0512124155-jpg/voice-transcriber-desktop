@@ -1,0 +1,469 @@
+/* The application shell.
+ *
+ * Plain CSS, on purpose. Everything in this file has to survive the WKWebView
+ * that ships with an older macOS, so it deliberately avoids the constructs
+ * that fail there: no :is()/:where(), no nesting, no color-mix(), no flex
+ * `gap`, no @property. Spacing is margins and padding; every colour is a
+ * token from theme.css or a literal rgba().
+ *
+ * It replaces the Tailwind utilities on the shell, the sidebar, the setting
+ * groups and the rows — the four things that carry the whole look of the app.
+ */
+
+/* ---------------------------------------------------------------- shell -- */
+
+.vt-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: -apple-system, "SF Pro Text", "Segoe UI Variable Text",
+    "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: default;
+}
+
+.vt-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.vt-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  /* A hair of light from the top-left, so the content plane is not a flat
+     rectangle. Cheap, and it reads as depth rather than decoration. */
+  background: radial-gradient(
+    120% 90% at 0% 0%,
+    rgba(155, 176, 255, 0.05) 0%,
+    rgba(155, 176, 255, 0) 55%
+  );
+}
+
+.vt-scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.vt-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 26px 28px 40px 28px;
+}
+
+.vt-page--fill {
+  height: 100%;
+  padding: 20px 24px 0 24px;
+}
+
+.vt-column {
+  width: 100%;
+  max-width: 748px;
+}
+
+/* -------------------------------------------------------------- sidebar -- */
+
+.vt-sidebar {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 218px;
+  width: 218px;
+  height: 100%;
+  padding: 0 12px 12px 12px;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-line);
+}
+
+[dir="rtl"] .vt-sidebar {
+  border-right: 0;
+  border-left: 1px solid var(--color-line);
+}
+
+.vt-sidebar__brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22px 8px 20px 8px;
+}
+
+.vt-sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-line);
+}
+
+.vt-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 9px 10px;
+  margin-bottom: 2px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--color-ink-2);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  text-align: start;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.vt-nav-item:hover {
+  background: var(--color-surface-high);
+  color: var(--color-text);
+}
+
+.vt-nav-item--active {
+  background: var(--color-surface-high);
+  color: var(--color-text);
+}
+
+/* The accent bar is drawn as a pseudo-element so it cannot shift the text. */
+.vt-nav-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 3px;
+  height: 18px;
+  margin-top: -9px;
+  border-radius: 3px;
+  background: var(--color-logo-primary);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+[dir="rtl"] .vt-nav-item::before {
+  left: auto;
+  right: 0;
+}
+
+.vt-nav-item--active::before {
+  opacity: 1;
+}
+
+.vt-nav-item__icon {
+  flex: 0 0 auto;
+  margin-right: 10px;
+  color: var(--color-ink-3);
+}
+
+[dir="rtl"] .vt-nav-item__icon {
+  margin-right: 0;
+  margin-left: 10px;
+}
+
+.vt-nav-item--active .vt-nav-item__icon {
+  color: var(--color-logo-primary);
+}
+
+.vt-nav-item__label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.vt-sidebar__spacer {
+  flex: 1 1 auto;
+}
+
+.vt-sidebar__hint {
+  display: flex;
+  align-items: center;
+  padding: 10px 10px 4px 10px;
+  margin-top: 10px;
+  border-top: 1px solid var(--color-line);
+  color: var(--color-ink-3);
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+}
+
+.vt-kbd {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 7px;
+  margin-right: 8px;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 6px;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+[dir="rtl"] .vt-kbd {
+  margin-right: 0;
+  margin-left: 8px;
+}
+
+/* --------------------------------------------------------------- header -- */
+
+.vt-header {
+  padding: 6px 2px 20px 2px;
+}
+
+.vt-header__title {
+  margin: 0;
+  font-size: 23px;
+  line-height: 1.25;
+  font-weight: 650;
+  letter-spacing: -0.012em;
+  color: var(--color-text);
+}
+
+/* ---------------------------------------------------------------- group -- */
+
+.vt-group {
+  margin-bottom: 22px;
+}
+
+.vt-group__title {
+  margin: 0 0 8px 2px;
+  color: var(--color-ink-3);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.vt-group__description {
+  margin: 4px 0 0 2px;
+  color: var(--color-ink-3);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.vt-group__card {
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: 13px;
+  background: var(--color-surface);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 8px 24px -18px rgba(0, 0, 0, 0.9);
+}
+
+.vt-group__card > * + * {
+  border-top: 1px solid var(--color-line);
+}
+
+/* ------------------------------------------------------------------ row -- */
+
+.vt-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 54px;
+  padding: 11px 16px;
+  transition: background-color 110ms ease;
+}
+
+.vt-row:hover {
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.vt-row--stacked {
+  display: block;
+}
+
+.vt-row--disabled {
+  opacity: 0.45;
+}
+
+.vt-row__text {
+  min-width: 0;
+  max-width: 66%;
+  padding-right: 16px;
+}
+
+[dir="rtl"] .vt-row__text {
+  padding-right: 0;
+  padding-left: 16px;
+}
+
+.vt-row__title {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  color: var(--color-text);
+  font-size: 13.5px;
+  font-weight: 550;
+  line-height: 1.35;
+}
+
+.vt-row__description {
+  margin: 3px 0 0 0;
+  color: var(--color-ink-3);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.vt-row__control {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.vt-row__control--grow {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.vt-row__info {
+  margin-left: 6px;
+  color: var(--color-ink-3);
+}
+
+[dir="rtl"] .vt-row__info {
+  margin-left: 0;
+  margin-right: 6px;
+}
+
+/* --------------------------------------------------------------- switch -- */
+
+.vt-switch {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.vt-switch--disabled {
+  cursor: not-allowed;
+}
+
+.vt-switch__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.vt-switch__track {
+  position: relative;
+  display: block;
+  width: 42px;
+  height: 25px;
+  border-radius: 13px;
+  background: var(--color-line-strong);
+  transition: background-color 160ms ease;
+}
+
+.vt-switch__knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  transition: transform 160ms ease;
+}
+
+.vt-switch__input:checked + .vt-switch__track {
+  background: var(--color-background-ui);
+}
+
+.vt-switch__input:checked + .vt-switch__track .vt-switch__knob {
+  transform: translateX(17px);
+}
+
+[dir="rtl"] .vt-switch__input:checked + .vt-switch__track .vt-switch__knob {
+  transform: translateX(-17px);
+}
+
+.vt-switch__input:focus-visible + .vt-switch__track {
+  box-shadow: 0 0 0 3px rgba(92, 111, 209, 0.35);
+}
+
+.vt-switch--disabled .vt-switch__track {
+  opacity: 0.5;
+}
+
+/* ------------------------------------------------------------------ page -- */
+
+/* The column of groups inside a section. Spacing comes from .vt-group, so the
+   wrapper itself carries none — the old `space-y-6` utility is gone with it. */
+.vt-stack {
+  display: block;
+}
+
+.vt-stack > .vt-group:last-child {
+  margin-bottom: 0;
+}
+
+/* Models fills the window: its own table scrolls, not the page. */
+.vt-page--fill .vt-column {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* History puts its two actions above the card instead of inside a row. */
+.vt-group__head {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.vt-group__head > * + * {
+  margin-left: 8px;
+}
+
+[dir="rtl"] .vt-group__head > * + * {
+  margin-left: 0;
+  margin-right: 8px;
+}
+
+/* A narrow window: the sidebar has to give up width before the rows do. */
+@media (max-width: 900px) {
+  .vt-sidebar {
+    flex-basis: 176px;
+    width: 176px;
+    padding: 0 8px 10px 8px;
+  }
+
+  .vt-page {
+    padding: 18px 16px 32px 16px;
+  }
+
+  .vt-header {
+    padding-bottom: 16px;
+  }
+
+  .vt-header__title {
+    font-size: 20px;
+  }
+
+  .vt-row {
+    padding: 10px 13px;
+  }
+
+  .vt-row__text {
+    max-width: 60%;
+    padding-right: 10px;
+  }
+}

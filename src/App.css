@@ -2,6 +2,7 @@
    output and made the first dev CSS compile take ~16s. */
 @import "tailwindcss" source(".");
 @import "./styles/theme.css";
+@import "./styles/design.css";
 
 /* Register the shared color tokens (src/styles/theme.css) as Tailwind
    utilities */

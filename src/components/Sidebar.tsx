@@ -85,6 +85,37 @@ export const SECTIONS_CONFIG = {
   },
 } as const satisfies Record<string, SectionConfig>;
 
+/** `ctrl+space` → `⌃ Space` on a Mac, `Ctrl+Space` everywhere else. */
+const formatShortcut = (binding: string | undefined): string | null => {
+  if (!binding) return null;
+  const isMac = /mac/i.test(navigator.userAgent);
+  const parts = binding
+    .split("+")
+    .map((part) => part.trim().toLowerCase())
+    .filter(Boolean);
+  if (parts.length === 0) return null;
+
+  if (!isMac) {
+    return parts
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join("+");
+  }
+
+  const glyphs: Record<string, string> = {
+    ctrl: "⌃",
+    control: "⌃",
+    alt: "⌥",
+    option: "⌥",
+    shift: "⇧",
+    cmd: "⌘",
+    command: "⌘",
+    super: "⌘",
+  };
+  return parts
+    .map((part) => glyphs[part] ?? part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+};
+
 interface SidebarProps {
   activeSection: SidebarSection;
   onSectionChange: (section: SidebarSection) => void;
@@ -101,44 +132,43 @@ export const Sidebar: React.FC<SidebarProps> = ({
     .filter(([_, config]) => config.enabled(settings))
     .map(([id, config]) => ({ id: id as SidebarSection, ...config }));
 
+  const shortcut = formatShortcut(
+    settings?.bindings?.transcribe?.current_binding,
+  );
+
   return (
-    <div className="flex flex-col w-44 h-full border-e border-line bg-surface items-center px-2">
-      <AppLogo width={128} className="m-4" />
-      <div className="flex flex-col w-full items-center gap-1 pt-2 border-t border-line">
+    <aside className="vt-sidebar">
+      <div className="vt-sidebar__brand">
+        <AppLogo width={132} />
+      </div>
+
+      <nav className="vt-sidebar__nav">
         {availableSections.map((section) => {
           const Icon = section.icon;
           const isActive = activeSection === section.id;
 
           return (
-            <div
+            <button
               key={section.id}
-              className={`relative flex gap-2.5 items-center p-2 w-full rounded-lg cursor-pointer transition-colors ${
-                isActive
-                  ? "bg-surface-high text-text"
-                  : "text-ink-2 hover:bg-surface-high hover:text-text"
-              }`}
+              type="button"
+              className={`vt-nav-item${isActive ? " vt-nav-item--active" : ""}`}
               onClick={() => onSectionChange(section.id)}
+              aria-current={isActive ? "page" : undefined}
             >
-              <span
-                className={`absolute start-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full transition-opacity ${
-                  isActive ? "bg-logo-primary opacity-100" : "opacity-0"
-                }`}
-              />
-              <Icon
-                width={20}
-                height={20}
-                className={`shrink-0 ${isActive ? "text-logo-primary" : ""}`}
-              />
-              <p
-                className="text-sm font-medium truncate"
-                title={t(section.labelKey)}
-              >
-                {t(section.labelKey)}
-              </p>
-            </div>
+              <Icon className="vt-nav-item__icon" width={18} height={18} />
+              <span className="vt-nav-item__label">{t(section.labelKey)}</span>
+            </button>
           );
         })}
-      </div>
-    </div>
+      </nav>
+
+      <div className="vt-sidebar__spacer" />
+
+      {shortcut && (
+        <div className="vt-sidebar__hint">
+          <span className="vt-kbd">{shortcut}</span>
+        </div>
+      )}
+    </aside>
   );
 };

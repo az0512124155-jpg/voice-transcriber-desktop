@@ -317,37 +317,41 @@ function App() {
     );
   } else {
     content = (
-      <div
-        dir={direction}
-        className="h-screen flex flex-col select-none cursor-default"
-      >
+      <div dir={direction} className="vt-shell">
         <ErrorBoundary context="What's New">
           <WhatsNewGate />
         </ErrorBoundary>
         {/* Main content area that takes remaining space */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="vt-body">
           <Sidebar
             activeSection={currentSection}
             onSectionChange={setCurrentSection}
           />
           {/* Scrollable content area */}
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <div ref={settingsScrollRef} className="flex-1 overflow-y-auto">
+          <main className="vt-main">
+            <div ref={settingsScrollRef} className="vt-scroll">
               {/* Models fills the window: its table scrolls, not the page. */}
               <div
-                className={`flex flex-col items-center p-4 gap-4 ${currentSection === "models" ? "h-full" : ""}`}
+                className={`vt-page${currentSection === "models" ? " vt-page--fill" : ""}`}
               >
-                <SecureInputWarning />
-                {renderSettingsContent(
-                  currentSection,
-                  setOnboardingPreview,
-                  runOnboarding,
-                  runModelMigration,
-                  setCurrentSection,
-                )}
+                <div className="vt-column">
+                  <header className="vt-header">
+                    <h1 className="vt-header__title">
+                      {t(SECTIONS_CONFIG[currentSection].labelKey)}
+                    </h1>
+                  </header>
+                  <SecureInputWarning />
+                  {renderSettingsContent(
+                    currentSection,
+                    setOnboardingPreview,
+                    runOnboarding,
+                    runModelMigration,
+                    setCurrentSection,
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          </main>
         </div>
         {/* Fixed footer at bottom */}
         <Footer onShowHistory={showHistory} />

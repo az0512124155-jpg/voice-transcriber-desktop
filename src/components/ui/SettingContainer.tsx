@@ -14,100 +14,65 @@ interface SettingContainerProps {
   grow?: boolean;
 }
 
+/**
+ * One settings row: a title (with an optional info bubble), an optional
+ * description, and the control on the trailing edge.
+ *
+ * `grouped` is kept for call-site compatibility; the row is styled the same
+ * either way, because the card around it now draws the dividers.
+ */
 export const SettingContainer: React.FC<SettingContainerProps> = ({
   title,
   description,
   children,
   descriptionMode = "tooltip",
-  grouped = false,
   layout = "horizontal",
   disabled = false,
   tooltipPosition = "top",
   grow = false,
 }) => {
   const info = (
-    <InfoTooltip
-      text={description}
-      placement={tooltipPosition === "bottom" ? "below" : "above"}
-    />
+    <span className="vt-row__info">
+      <InfoTooltip
+        text={description}
+        placement={tooltipPosition === "bottom" ? "below" : "above"}
+      />
+    </span>
   );
 
-  const containerClasses = grouped
-    ? "px-4 p-2"
-    : "px-4 p-2 rounded-lg border border-line";
-
   if (layout === "stacked") {
-    if (descriptionMode === "tooltip") {
-      return (
-        <div className={containerClasses}>
-          <div className="flex items-center gap-2 mb-2">
-            <h3
-              className={`text-sm font-medium ${disabled ? "opacity-50" : ""}`}
-            >
-              {title}
-            </h3>
-            {info}
-          </div>
-          <div className="w-full">{children}</div>
-        </div>
-      );
-    }
-
     return (
-      <div className={containerClasses}>
-        <div className="mb-2">
-          <h3 className={`text-sm font-medium ${disabled ? "opacity-50" : ""}`}>
-            {title}
-          </h3>
-          <p className={`text-sm ${disabled ? "opacity-50" : ""}`}>
-            {description}
-          </p>
-        </div>
-        <div className="w-full">{children}</div>
-      </div>
-    );
-  }
-
-  // Horizontal layout (default)
-  const horizontalContainerClasses = `${
-    grouped
-      ? "flex items-center justify-between min-h-12 px-4 p-2"
-      : "flex items-center justify-between min-h-12 px-4 p-2 rounded-lg border border-line"
-  }${grow ? " gap-4" : ""}`;
-  const titleClasses = grow ? "max-w-2/3 shrink-0" : "max-w-2/3";
-  const controlClasses = grow
-    ? "relative flex min-w-0 flex-1 justify-end"
-    : "relative";
-
-  if (descriptionMode === "tooltip") {
-    return (
-      <div className={horizontalContainerClasses}>
-        <div className={titleClasses}>
-          <div className="flex items-center gap-2">
-            <h3
-              className={`text-sm font-medium ${disabled ? "opacity-50" : ""}`}
-            >
-              {title}
-            </h3>
-            {info}
-          </div>
-        </div>
-        <div className={controlClasses}>{children}</div>
+      <div
+        className={`vt-row vt-row--stacked${disabled ? " vt-row--disabled" : ""}`}
+      >
+        <h3 className="vt-row__title">
+          {title}
+          {descriptionMode === "tooltip" && info}
+        </h3>
+        {descriptionMode === "inline" && (
+          <p className="vt-row__description">{description}</p>
+        )}
+        <div className="vt-row__control vt-row__control--grow">{children}</div>
       </div>
     );
   }
 
   return (
-    <div className={horizontalContainerClasses}>
-      <div className={titleClasses}>
-        <h3 className={`text-sm font-medium ${disabled ? "opacity-50" : ""}`}>
+    <div className={`vt-row${disabled ? " vt-row--disabled" : ""}`}>
+      <div className="vt-row__text">
+        <h3 className="vt-row__title">
           {title}
+          {descriptionMode === "tooltip" && info}
         </h3>
-        <p className={`text-sm ${disabled ? "opacity-50" : ""}`}>
-          {description}
-        </p>
+        {descriptionMode === "inline" && (
+          <p className="vt-row__description">{description}</p>
+        )}
       </div>
-      <div className={controlClasses}>{children}</div>
+      <div
+        className={`vt-row__control${grow ? " vt-row__control--grow" : ""}`}
+      >
+        {children}
+      </div>
     </div>
   );
 };

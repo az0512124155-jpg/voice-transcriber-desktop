@@ -28,7 +28,7 @@
   text-align: start;
   background: var(--demo-wallpaper);
   /* Demo's lid, as a hairline: the screen's edge, not a frame. */
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-text) 9%, transparent);
+  box-shadow: 0 0 0 1px var(--color-line);
 }
 
 /* The slow-take hint; its height is always kept so the screen never jumps. */
@@ -189,7 +189,7 @@
 /* Sized by .try-eased, up to 420px, and lifted so the tail meets the glove's
    face. One edge colour and fill, so the tail can share them. */
 .try-bubble {
-  --try-bubble-edge: color-mix(in srgb, var(--color-text) 15%, transparent);
+  --try-bubble-edge: var(--color-line-strong);
   --try-bubble-fill: var(--color-demo-window);
   --try-bubble-shadow: 0 6px 18px -8px rgb(0 0 0 / 0.22);
   position: relative;
@@ -207,7 +207,7 @@
 }
 /* A problem: warm, so it never reads as a win. */
 .try-bubble[data-shape="problem"] {
-  --try-bubble-edge: color-mix(in srgb, var(--color-warning) 32%, transparent);
+  --try-bubble-edge: var(--color-warning);
   --try-bubble-fill: var(--color-warning-wash);
 }
 /* Rotated square, half inside the bubble to cover its edge. It needs 17px of
@@ -473,7 +473,7 @@
 
 /* Hangs off the tray icon: under the menu bar, or above the taskbar. */
 .try-panel {
-  --try-panel-edge: color-mix(in srgb, var(--color-text) 15%, transparent);
+  --try-panel-edge: var(--color-line-strong);
   --try-panel-fill: var(--color-demo-window);
   position: absolute;
   z-index: 4;
@@ -662,5 +662,19 @@ button.try-panel-row:focus-visible {
   .try-leaving,
   .try-panel {
     animation: none !important;
+  }
+}
+
+/* Softened edges, for engines with color-mix() (Safari 16.2+). The plain
+   colours above are what a WebKit without it falls back to. */
+@supports (color: color-mix(in lab, red, red)) {
+  .try-bubble {
+    --try-bubble-edge: color-mix(in srgb, var(--color-text) 15%, transparent);
+  }
+  .try-bubble[data-shape="problem"] {
+    --try-bubble-edge: color-mix(in srgb, var(--color-warning) 32%, transparent);
+  }
+  .try-panel {
+    --try-panel-edge: color-mix(in srgb, var(--color-text) 15%, transparent);
   }
 }

@@ -13,6 +13,7 @@
 // problem here, keeps its layers and its byte-identical output.
 import { readdir, readFile, writeFile, stat } from "node:fs/promises";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 
 const OUT_DIR = process.argv[2] ?? "dist/assets";
 
@@ -88,4 +89,7 @@ async function main() {
   }
 }
 
-await main();
+// Only run when invoked directly; legacy-css.mjs imports flattenLayers.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  await main();
+}

@@ -94,12 +94,6 @@ jobs:
           # notarised, and an ad-hoc signature is still required for arm64
           # binaries to run at all.
           APPLE_SIGNING_IDENTITY: "-"
-          # Tailwind 4 emits every rule inside `@layer`. WebKit before Safari
-          # 15.4 (macOS 11 and 12.0–12.2) ignores those blocks wholesale, which
-          # ships an app with no colours, no spacing and no layout at all. The
-          # post-build step rewrites the cascade layers into plain rules, which
-          # is byte-for-byte equivalent on a modern engine.
-          FLATTEN_CSS_LAYERS: "1"
         run: |
           set -euo pipefail
           npx tauri build \
@@ -137,13 +131,21 @@ jobs:
           test -f dist/index.html || { echo "the built frontend is missing"; exit 1; }
           ls dist/assets/*.css >/dev/null 2>&1 || { echo "no stylesheet was built"; exit 1; }
           ls dist/assets/*.js  >/dev/null 2>&1 || { echo "no script was built"; exit 1; }
-          if grep -q '@layer' dist/assets/*.css; then
-            echo "the stylesheet still uses @layer, which macOS 11/12 WebKit ignores"
-            exit 1
-          fi
+          # Every construct below is unsupported on the WKWebView that macOS
+          # 10.15-12 ship, and each one fails loudly: a rule whose selector uses
+          # :is() is dropped whole, and an unregistered --tw-border-style means
+          # no border is ever painted.
+          for banned in '@layer' ':is(' ':where(' '@property'; do
+            if grep -q -- "$banned" dist/assets/*.css; then
+              echo "the stylesheet still contains $banned, which old WebKit cannot apply"
+              exit 1
+            fi
+          done
           grep -q -- '--color-background' dist/assets/*.css \
             || { echo "the theme tokens are missing from the stylesheet"; exit 1; }
-          echo "ok the web UI is layered-free and carries the theme"
+          grep -q 'html{background-color' dist/assets/*.css \
+            || { echo "the opaque window fallback is missing"; exit 1; }
+          echo "ok the web UI is free of @layer/:is/:where/@property and carries the theme"
           # Prove the binary really is the architecture we asked for: an
           # Intel build that silently came out arm64 would only fail on the
           # user's machine.

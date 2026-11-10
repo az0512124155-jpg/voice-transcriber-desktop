@@ -53,11 +53,7 @@
 
   /* Demo's drawn app window. */
   --light-color-demo-window: var(--light-color-surface);
-  --dark-color-demo-window: color-mix(
-    in srgb,
-    #fff 5%,
-    var(--dark-color-surface)
-  );
+  --dark-color-demo-window: var(--dark-color-surface);
 
   /* Demo's laptop: lid, base gradient and wallpaper. */
   --light-color-demo-lid: #1f2128;
@@ -66,30 +62,8 @@
   --dark-color-demo-alu-hi: #4a4f5e;
   --light-color-demo-alu-lo: #cbcfdb;
   --dark-color-demo-alu-lo: #2b303c;
-  --light-demo-wallpaper:
-    radial-gradient(
-      110% 80% at 90% 105%,
-      color-mix(in srgb, var(--light-color-logo-primary) 38%, #f5f6fa) 0%,
-      transparent 60%
-    ),
-    radial-gradient(
-      90% 80% at 5% -5%,
-      color-mix(in srgb, #ffc978 34%, #f5f6fa) 0%,
-      transparent 62%
-    ),
-    color-mix(in srgb, #e6e9f5 60%, #f5f6fa);
-  --dark-demo-wallpaper:
-    radial-gradient(
-      110% 80% at 90% 105%,
-      color-mix(in srgb, var(--dark-color-logo-primary) 22%, #0b0d14) 0%,
-      transparent 60%
-    ),
-    radial-gradient(
-      90% 80% at 5% -5%,
-      color-mix(in srgb, #ffc978 14%, #0b0d14) 0%,
-      transparent 62%
-    ),
-    #0b0d14;
+  --light-demo-wallpaper: #eceef7;
+  --dark-demo-wallpaper: #0b0d14;
 
   /* The wordmark. Dark mode keeps it periwinkle; light mode darkens it so it
      stays legible on paper. */
@@ -103,45 +77,16 @@
   --dark-color-mascot-line: var(--dark-color-background);
 
   /* Demo's recording pill ring and shadow. */
-  --light-demo-pill-shadow:
-    0 0 0 1px color-mix(in srgb, var(--color-background-ui) 16%, transparent),
-    0 10px 26px -10px rgba(0, 0, 0, 0.35);
-  --dark-demo-pill-shadow:
-    0 0 0 1px
-      color-mix(in srgb, var(--dark-color-logo-primary) 20%, transparent),
-    0 10px 26px -10px rgba(0, 0, 0, 0.6);
+  --light-demo-pill-shadow: 0 10px 26px -10px rgba(0, 0, 0, 0.35);
+  --dark-demo-pill-shadow: 0 10px 26px -10px rgba(0, 0, 0, 0.6);
 
   /* Status tints for the box behind a status colour. */
-  --light-color-moss-wash: color-mix(
-    in srgb,
-    var(--light-color-moss) 12%,
-    var(--light-color-background)
-  );
-  --dark-color-moss-wash: color-mix(
-    in srgb,
-    var(--dark-color-moss) 14%,
-    var(--dark-color-background)
-  );
-  --light-color-warning-wash: color-mix(
-    in srgb,
-    var(--light-color-warning) 12%,
-    var(--light-color-background)
-  );
-  --dark-color-warning-wash: color-mix(
-    in srgb,
-    var(--dark-color-warning) 14%,
-    var(--dark-color-background)
-  );
-  --light-color-error-wash: color-mix(
-    in srgb,
-    var(--light-color-error) 12%,
-    var(--light-color-background)
-  );
-  --dark-color-error-wash: color-mix(
-    in srgb,
-    var(--dark-color-error) 14%,
-    var(--dark-color-background)
-  );
+  --light-color-moss-wash: var(--light-color-surface-high);
+  --dark-color-moss-wash: var(--dark-color-surface-high);
+  --light-color-warning-wash: var(--light-color-surface-high);
+  --dark-color-warning-wash: var(--dark-color-surface-high);
+  --light-color-error-wash: var(--light-color-surface-high);
+  --dark-color-error-wash: var(--dark-color-surface-high);
 
   /* Tokens that do not change between light and dark. PrimaryDeep is the one
      saturated brand fill: white text sits on it in both themes. */
@@ -176,13 +121,13 @@
 
   /* Grey steps: secondary text, hints/icons, control edges, dividers, hover
      fill. The line tokens come from the palette so they stay crisp. */
-  --color-ink-2: color-mix(in srgb, var(--color-text) 64%, transparent);
+  --color-ink-2: var(--color-ink-3);
   --color-ink-3: var(--color-mid-gray);
-  --color-wash: color-mix(in srgb, var(--color-mid-gray) 10%, transparent);
+  --color-wash: var(--color-surface-high);
   /* Edge of a picked card or option. */
-  --color-plum-pick: color-mix(in srgb, var(--color-plum) 60%, transparent);
+  --color-plum-pick: var(--color-plum);
   /* The far end of a capture slot's breathing edge (KeySlot). */
-  --color-plum-faint: color-mix(in srgb, var(--color-plum) 22%, transparent);
+  --color-plum-faint: var(--color-plum);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -273,4 +218,90 @@
   --color-moss-wash: var(--dark-color-moss-wash);
   --color-warning-wash: var(--dark-color-warning-wash);
   --color-error-wash: var(--dark-color-error-wash);
+}
+
+/* The real tints, for engines that have color-mix() (Safari 16.2+).
+ *
+ * Everything above declares a plain-colour stand-in, because a WebKit without
+ * color-mix() drops the declaration outright — and a custom property that
+ * resolves to nothing takes every property using it down with it. That is how
+ * a dark app ends up as unreadable black boxes: --color-ink-2 disappears, so
+ * every piece of secondary text loses its colour.
+ *
+ * Declaring the fallback first and the mix here keeps the two engines close
+ * while letting the modern one stay exact.
+ */
+@supports (color: color-mix(in lab, red, red)) {
+  :root {
+    --dark-color-demo-window: color-mix(
+      in srgb,
+      #fff 5%,
+      var(--dark-color-surface)
+    );
+    --light-demo-wallpaper:
+      radial-gradient(
+        110% 80% at 90% 105%,
+        color-mix(in srgb, var(--light-color-logo-primary) 38%, #f5f6fa) 0%,
+        transparent 60%
+      ),
+      radial-gradient(
+        90% 80% at 5% -5%,
+        color-mix(in srgb, #ffc978 34%, #f5f6fa) 0%,
+        transparent 62%
+      ),
+      color-mix(in srgb, #e6e9f5 60%, #f5f6fa);
+    --dark-demo-wallpaper:
+      radial-gradient(
+        110% 80% at 90% 105%,
+        color-mix(in srgb, var(--dark-color-logo-primary) 22%, #0b0d14) 0%,
+        transparent 60%
+      ),
+      radial-gradient(
+        90% 80% at 5% -5%,
+        color-mix(in srgb, #ffc978 14%, #0b0d14) 0%,
+        transparent 62%
+      ),
+      #0b0d14;
+    --light-demo-pill-shadow:
+      0 0 0 1px color-mix(in srgb, var(--color-background-ui) 16%, transparent),
+      0 10px 26px -10px rgba(0, 0, 0, 0.35);
+    --dark-demo-pill-shadow:
+      0 0 0 1px
+        color-mix(in srgb, var(--dark-color-logo-primary) 20%, transparent),
+      0 10px 26px -10px rgba(0, 0, 0, 0.6);
+    --light-color-moss-wash: color-mix(
+      in srgb,
+      var(--light-color-moss) 12%,
+      var(--light-color-background)
+    );
+    --dark-color-moss-wash: color-mix(
+      in srgb,
+      var(--dark-color-moss) 14%,
+      var(--dark-color-background)
+    );
+    --light-color-warning-wash: color-mix(
+      in srgb,
+      var(--light-color-warning) 12%,
+      var(--light-color-background)
+    );
+    --dark-color-warning-wash: color-mix(
+      in srgb,
+      var(--dark-color-warning) 14%,
+      var(--dark-color-background)
+    );
+    --light-color-error-wash: color-mix(
+      in srgb,
+      var(--light-color-error) 12%,
+      var(--light-color-background)
+    );
+    --dark-color-error-wash: color-mix(
+      in srgb,
+      var(--dark-color-error) 14%,
+      var(--dark-color-background)
+    );
+    --color-ink-2: color-mix(in srgb, var(--color-text) 64%, transparent);
+    --color-wash: color-mix(in srgb, var(--color-mid-gray) 10%, transparent);
+    --color-plum-pick: color-mix(in srgb, var(--color-plum) 60%, transparent);
+    --color-plum-faint: color-mix(in srgb, var(--color-plum) 22%, transparent);
+  }
 }

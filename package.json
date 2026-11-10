@@ -1,11 +1,11 @@
 {
   "name": "voice-transcriber",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && node scripts/flatten-css-layers.mjs",
     "preview": "vite preview",
     "tauri": "tauri",
     "lint": "eslint src",

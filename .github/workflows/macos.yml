@@ -94,6 +94,12 @@ jobs:
           # notarised, and an ad-hoc signature is still required for arm64
           # binaries to run at all.
           APPLE_SIGNING_IDENTITY: "-"
+          # Tailwind 4 emits every rule inside `@layer`. WebKit before Safari
+          # 15.4 (macOS 11 and 12.0–12.2) ignores those blocks wholesale, which
+          # ships an app with no colours, no spacing and no layout at all. The
+          # post-build step rewrites the cascade layers into plain rules, which
+          # is byte-for-byte equivalent on a modern engine.
+          FLATTEN_CSS_LAYERS: "1"
         run: |
           set -euo pipefail
           npx tauri build \
@@ -123,6 +129,19 @@ jobs:
           done
           /usr/libexec/PlistBuddy -c "Print :NSMicrophoneUsageDescription" \
             "$APP/Contents/Info.plist"
+          # The web UI is as much a part of the bundle as the models. If the
+          # stylesheet is missing, or still wrapped in cascade layers that this
+          # Mac's WebKit ignores, the window opens as an unstyled wall of boxes.
+          test -f "$RES/index.html" || { echo "missing from the bundle: $RES/index.html"; exit 1; }
+          ls "$RES"/assets/*.css >/dev/null 2>&1 || { echo "no stylesheet in the bundle"; exit 1; }
+          ls "$RES"/assets/*.js  >/dev/null 2>&1 || { echo "no script in the bundle"; exit 1; }
+          if grep -q '@layer' "$RES"/assets/*.css; then
+            echo "the stylesheet still uses @layer, which macOS 11/12 WebKit ignores"
+            exit 1
+          fi
+          grep -q -- '--color-background' "$RES"/assets/*.css \
+            || { echo "the theme tokens are missing from the stylesheet"; exit 1; }
+          echo "ok the web UI is in the bundle, layered-free and carrying the theme"
           # Prove the binary really is the architecture we asked for: an
           # Intel build that silently came out arm64 would only fail on the
           # user's machine.

@@ -23,17 +23,24 @@ interface DropdownProps {
   tone?: "brand" | "neutral";
 }
 
+/**
+ * A select-shaped button that opens a list.
+ *
+ * The trigger is `.vt-field`, the same class the react-select control uses, so
+ * every picker in the window is the same 30px box whether it is a native
+ * react-select or this one. The `tone` prop survives for call sites that pass
+ * it, but the menu now has one look: the brand tint marks the chosen row.
+ */
 export const Dropdown: React.FC<DropdownProps> = ({
   options,
   selectedValue,
   onSelect,
   className = "",
-  menuClassName,
+  menuClassName = "",
   placeholder = "Select an option...",
   disabled = false,
   onOpen,
   placement = "below",
-  tone = "brand",
 }) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -52,11 +59,6 @@ export const Dropdown: React.FC<DropdownProps> = ({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  // The trigger's hover; in the menu, hover is grey so it never looks chosen.
-  const hover =
-    tone === "neutral" ? "hover:bg-wash" : "hover:bg-logo-primary/10";
-  const chosen = tone === "neutral" ? "bg-line" : "bg-logo-primary/15";
 
   const selectedOption = options.find(
     (option) => option.value === selectedValue,
@@ -83,28 +85,27 @@ export const Dropdown: React.FC<DropdownProps> = ({
 
   return (
     <div
-      className={`relative ${className}`}
+      className={`vt-dropdown ${className}`}
       ref={dropdownRef}
       onKeyDown={handleKeyDown}
     >
       <button
         type="button"
         ref={triggerRef}
-        className={`px-2 py-[5px] text-sm font-semibold bg-wash border border-line-strong rounded-md min-w-[200px] w-full text-start grid grid-cols-[1fr_auto] gap-2 items-center transition-all duration-150 ${
-          disabled
-            ? "opacity-50 cursor-not-allowed"
-            : `${hover} cursor-pointer ${tone === "neutral" ? "hover:border-ink-3" : "hover:border-logo-primary"}`
-        }`}
+        className={`vt-field${isOpen ? " vt-field--open" : ""}`}
         onClick={handleToggle}
         disabled={disabled}
         aria-expanded={isOpen}
       >
-        <span className="truncate">{selectedOption?.label || placeholder}</span>
+        <span className="vt-field__value">
+          {selectedOption?.label || placeholder}
+        </span>
         <svg
-          className={`w-4 h-4 transition-transform duration-200 ${isOpen ? "transform rotate-180" : ""}`}
+          className="vt-field__chevron"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
+          aria-hidden="true"
         >
           <path
             strokeLinecap="round"
@@ -116,14 +117,10 @@ export const Dropdown: React.FC<DropdownProps> = ({
       </button>
       {isOpen && !disabled && (
         <div
-          className={`absolute ${placement === "above" ? "bottom-full mb-1" : "top-full mt-1"} bg-background border border-line rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto p-1 ${
-            menuClassName ?? "left-0 right-0"
-          }`}
+          className={`vt-menu ${placement === "above" ? "vt-menu--above" : "vt-menu--below"} ${menuClassName}`}
         >
           {options.length === 0 ? (
-            <div className="px-2 py-1.5 text-sm text-ink-3">
-              {t("common.noOptionsFound")}
-            </div>
+            <div className="vt-menu__empty">{t("common.noOptionsFound")}</div>
           ) : (
             options.map((option) => {
               const isChosen = selectedValue === option.value;
@@ -131,32 +128,20 @@ export const Dropdown: React.FC<DropdownProps> = ({
                 <button
                   key={option.value}
                   type="button"
-                  className={`flex w-full items-center gap-2 rounded-md px-2 text-sm text-start transition-colors duration-150 ${
-                    option.description ? "py-2" : "py-1.5"
-                  } ${isChosen ? chosen : "hover:bg-wash"} ${
-                    option.disabled ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
+                  className={`vt-menu__option${
+                    isChosen ? " vt-menu__option--chosen" : ""
+                  }${option.disabled ? " vt-menu__option--disabled" : ""}`}
                   onClick={() => handleSelect(option.value)}
                   disabled={option.disabled}
                 >
-                  <span className="min-w-0 flex-1">
-                    <span
-                      className={`block whitespace-normal break-words ${
-                        isChosen ? "font-semibold" : ""
-                      }`}
-                    >
-                      {option.label}
-                    </span>
+                  <span className="vt-menu__text">
+                    <span className="vt-menu__label">{option.label}</span>
                     {option.description && (
-                      <span className="mt-0.5 block whitespace-normal text-xs font-normal leading-snug text-ink-3">
-                        {option.description}
-                      </span>
+                      <span className="vt-menu__desc">{option.description}</span>
                     )}
                   </span>
                   {isChosen && (
                     <svg
-                      width="16"
-                      height="16"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
@@ -164,7 +149,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       aria-hidden="true"
-                      className="shrink-0 text-ink-2"
+                      className="vt-menu__check"
                     >
                       <path d="M5 12.5l4.5 4.5L19 7.5" />
                     </svg>

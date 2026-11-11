@@ -39,8 +39,17 @@
   font-size: var(--bar-font);
   font-weight: 600;
   color: var(--color-ink-2);
-  background: color-mix(in srgb, var(--color-background) 62%, transparent);
+  /* Opaque first: a translucent bar is a nicety, and the color-mix() that
+     produces it is invisible to an engine that does not support it. */
+  background: var(--color-background);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
+}
+
+@supports (color: color-mix(in srgb, red, red)) {
+  .desktop-bar {
+    background: color-mix(in srgb, var(--color-background) 62%, transparent);
+  }
 }
 .desktop-bar.is-menu {
   top: 0;

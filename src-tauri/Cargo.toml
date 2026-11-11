@@ -1,6 +1,6 @@
 [package]
 name = "voice-transcriber"
-version = "1.0.4"
+version = "1.1.0"
 description = "Voice Transcriber — speech to text, in Hebrew and English"
 authors = ["cjpais"]
 edition = "2021"

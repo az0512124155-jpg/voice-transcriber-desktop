@@ -5,7 +5,6 @@ import type {
   ActionMeta,
   Props as ReactSelectProps,
   SingleValue,
-  StylesConfig,
 } from "react-select";
 
 export type SelectOption = {
@@ -39,81 +38,15 @@ type NonCreatableProps = {
 
 export type SelectProps = BaseProps & (CreatableProps | NonCreatableProps);
 
-const baseBackground = "var(--color-wash)";
-const hoverBackground =
-  "color-mix(in srgb, var(--color-logo-primary) 10%, transparent)";
-const focusBackground =
-  "color-mix(in srgb, var(--color-logo-primary) 20%, transparent)";
-const neutralBorder = "var(--color-line-strong)";
-
-const selectStyles: StylesConfig<SelectOption, false> = {
-  control: (base, state) => ({
-    ...base,
-    minHeight: 40,
-    borderRadius: 6,
-    borderColor: state.isFocused ? "var(--color-logo-primary)" : neutralBorder,
-    boxShadow: state.isFocused ? "0 0 0 1px var(--color-logo-primary)" : "none",
-    backgroundColor: state.isFocused ? focusBackground : baseBackground,
-    fontSize: "0.875rem",
-    color: "var(--color-text)",
-    transition: "all 150ms ease",
-    ":hover": {
-      borderColor: "var(--color-logo-primary)",
-      backgroundColor: hoverBackground,
-    },
-  }),
-  valueContainer: (base) => ({
-    ...base,
-    paddingInline: 10,
-    paddingBlock: 6,
-  }),
-  input: (base) => ({
-    ...base,
-    color: "var(--color-text)",
-  }),
-  singleValue: (base) => ({
-    ...base,
-    color: "var(--color-text)",
-  }),
-  dropdownIndicator: (base, state) => ({
-    ...base,
-    color: state.isFocused ? "var(--color-logo-primary)" : "var(--color-ink-3)",
-    ":hover": {
-      color: "var(--color-logo-primary)",
-    },
-  }),
-  clearIndicator: (base) => ({
-    ...base,
-    color: "var(--color-ink-3)",
-    ":hover": {
-      color: "var(--color-logo-primary)",
-    },
-  }),
-  menu: (provided) => ({
-    ...provided,
-    zIndex: 30,
-    backgroundColor: "var(--color-background)",
-    color: "var(--color-text)",
-    border: "1px solid var(--color-line)",
-    boxShadow: "0 10px 30px rgba(15, 15, 15, 0.2)",
-  }),
-  option: (base, state) => ({
-    ...base,
-    backgroundColor: state.isSelected
-      ? focusBackground
-      : state.isFocused
-        ? hoverBackground
-        : "transparent",
-    color: "var(--color-text)",
-    cursor: state.isDisabled ? "not-allowed" : base.cursor,
-    opacity: state.isDisabled ? 0.5 : 1,
-  }),
-  placeholder: (base) => ({
-    ...base,
-    color: "var(--color-ink-3)",
-  }),
-};
-
+/**
+ * Styled entirely from `design.css` via `classNamePrefix`.
+ *
+ * This used to pass a `styles` object with `color-mix()` values in it. Inline
+ * styles are not touched by the build's legacy pass, so on an older WebKit
+ * those declarations were simply dropped and the field fell back to
+ * react-select's bare rendering — a grey box on a dark window. `unstyled`
+ * removes that fallback, and the prefix classes are the only styling it gets.
+ */
 export const Select: React.FC<SelectProps> = React.memo(
   ({
     value,
@@ -145,7 +78,8 @@ export const Select: React.FC<SelectProps> = React.memo(
 
     const sharedProps: Partial<ReactSelectProps<SelectOption, false>> = {
       className,
-      classNamePrefix: "app-select",
+      classNamePrefix: "vt-select",
+      unstyled: true,
       value: selectValue,
       options,
       onChange: handleChange,
@@ -154,7 +88,6 @@ export const Select: React.FC<SelectProps> = React.memo(
       isLoading,
       onBlur,
       isClearable,
-      styles: selectStyles,
     };
 
     if (isCreatable) {

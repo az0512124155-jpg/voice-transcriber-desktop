@@ -47,7 +47,7 @@ export const ShortcutInput: React.FC<ShortcutInputProps> = ({
         descriptionMode={descriptionMode}
         grouped={grouped}
       >
-        <div className="text-sm text-ink-3">
+        <div className="vt-hint-text">
           {t("settings.general.shortcut.loading")}
         </div>
       </SettingContainer>
@@ -63,7 +63,7 @@ export const ShortcutInput: React.FC<ShortcutInputProps> = ({
         descriptionMode={descriptionMode}
         grouped={grouped}
       >
-        <div className="text-sm text-ink-3">
+        <div className="vt-hint-text">
           {t("settings.general.shortcut.none")}
         </div>
       </SettingContainer>
@@ -79,7 +79,7 @@ export const ShortcutInput: React.FC<ShortcutInputProps> = ({
         descriptionMode={descriptionMode}
         grouped={grouped}
       >
-        <div className="text-sm text-ink-3">
+        <div className="vt-hint-text">
           {t("settings.general.shortcut.none")}
         </div>
       </SettingContainer>
@@ -105,11 +105,11 @@ export const ShortcutInput: React.FC<ShortcutInputProps> = ({
       disabled={disabled}
       layout="horizontal"
     >
-      <div className="flex items-center space-x-1">
+      <div className="vt-shortcut">
         {capturing ? (
           <div
             ref={shortcutRef}
-            className="px-2 py-1 text-sm font-semibold border border-logo-primary bg-logo-primary/20 rounded-md"
+            className="vt-shortcut__key vt-shortcut__key--capturing"
           >
             {partial
               ? formatKeyCombination(partial, osType)
@@ -117,7 +117,7 @@ export const ShortcutInput: React.FC<ShortcutInputProps> = ({
           </div>
         ) : (
           <div
-            className="px-2 py-1 text-sm font-semibold bg-wash border border-line-strong hover:bg-logo-primary/10 rounded-md cursor-pointer hover:border-logo-primary"
+            className="vt-shortcut__key"
             onClick={start}
           >
             {formatKeyCombination(binding.current_binding, osType)}

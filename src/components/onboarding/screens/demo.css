@@ -1,3 +1,23 @@
+/* Keyframes cannot be feature-queried, so the tint lives in a variable with a
+   plain rgba() fallback and the real color-mix() is swapped in below. */
+:root {
+  --demo-pulse-wash: rgba(92, 111, 209, 0.22);
+  --demo-land-wash: rgba(127, 227, 188, 0.3);
+  --demo-land-wash-2: rgba(127, 227, 188, 0.22);
+}
+
+@supports (color: color-mix(in srgb, red, red)) {
+  :root {
+    --demo-pulse-wash: color-mix(
+      in srgb,
+      var(--color-background-ui) 22%,
+      transparent
+    );
+    --demo-land-wash: color-mix(in srgb, var(--color-moss) 30%, transparent);
+    --demo-land-wash-2: color-mix(in srgb, var(--color-moss) 22%, transparent);
+  }
+}
+
 /* Demo's drawing (Demo.tsx): the recording pill is a copy of the overlay's
    compact pill (src/overlay/RecordingOverlay.css), at full size. */
 .demo-pill {
@@ -49,8 +69,7 @@
 }
 @keyframes demo-pill-pulse {
   0% {
-    box-shadow: 0 0 0 0
-      color-mix(in srgb, var(--color-background-ui) 22%, transparent);
+    box-shadow: 0 0 0 0 var(--demo-pulse-wash);
   }
   70% {
     box-shadow: 0 0 0 7px transparent;
@@ -88,13 +107,13 @@
 @keyframes demo-land {
   0% {
     opacity: 0;
-    background: color-mix(in srgb, var(--color-moss) 30%, transparent);
+    background: var(--demo-land-wash);
   }
   12% {
     opacity: 1;
   }
   35% {
-    background: color-mix(in srgb, var(--color-moss) 22%, transparent);
+    background: var(--demo-land-wash-2);
   }
   100% {
     background: transparent;

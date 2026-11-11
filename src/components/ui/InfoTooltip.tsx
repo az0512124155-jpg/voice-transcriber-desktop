@@ -17,7 +17,7 @@ export const InfoTooltip: React.FC<InfoTooltipProps> = ({
     <button
       type="button"
       aria-label="More information"
-      className="grid cursor-help text-ink-3 transition-colors duration-200 hover:text-logo-primary"
+      className="vt-info-btn"
     >
       <svg
         className="w-4 h-4"

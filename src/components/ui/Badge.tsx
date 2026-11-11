@@ -12,14 +12,12 @@ const Badge: React.FC<BadgeProps> = ({
   className = "",
 }) => {
   const variantClasses = {
-    primary: "bg-logo-primary",
-    secondary: "bg-line text-ink-2",
+    primary: "vt-badge--accent",
+    secondary: "",
   };
 
   return (
-    <span
-      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${variantClasses[variant]} ${className}`}
-    >
+    <span className={`vt-badge ${variantClasses[variant]} ${className}`}>
       {children}
     </span>
   );

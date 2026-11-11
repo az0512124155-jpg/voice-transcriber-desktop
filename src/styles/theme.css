@@ -37,6 +37,23 @@
   --dark-color-logo-primary: #9bb0ff;
   --dark-color-logo-stroke: #f3f4f9;
 
+  /* Control surfaces. A field sits one step above the card it lives on, which
+     is what makes a select read as a control rather than a hole. Kept apart
+     from surface-high because that one is also the row-hover fill. */
+  --light-color-control: #eceff7;
+  --dark-color-control: #1e2028;
+
+  /* Sidebar labels and the status bar: quieter than ink-2, but still legible
+     on both themes. Sampled from the reference window. */
+  --light-color-ink-nav: #4d5262;
+  --dark-color-ink-nav: #a4a4aa;
+
+  /* Secondary text. The modern build derives this by mixing the text colour
+     with transparency; these are the equivalent solids, for the engine that
+     cannot mix and would otherwise fall back to something much darker. */
+  --light-color-ink-2: #63666f;
+  --dark-color-ink-2: #a0a3ab;
+
   /* Status colours. Each has a -wash tint below. */
   --light-color-warning: #b4650a;
   --light-color-error: #c0392b;
@@ -121,8 +138,10 @@
 
   /* Grey steps: secondary text, hints/icons, control edges, dividers, hover
      fill. The line tokens come from the palette so they stay crisp. */
-  --color-ink-2: var(--color-ink-3);
+  --color-ink-2: var(--light-color-ink-2);
   --color-ink-3: var(--color-mid-gray);
+  --color-ink-nav: var(--light-color-ink-nav);
+  --color-control: var(--light-color-control);
   --color-wash: var(--color-surface-high);
   /* Edge of a picked card or option. */
   --color-plum-pick: var(--color-plum);
@@ -133,6 +152,9 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --color-text: var(--dark-color-text);
+    --color-ink-nav: var(--dark-color-ink-nav);
+    --color-ink-2: var(--dark-color-ink-2);
+    --color-control: var(--dark-color-control);
     --color-background: var(--dark-color-background);
     --color-surface: var(--dark-color-surface);
     --color-surface-high: var(--dark-color-surface-high);
@@ -170,6 +192,9 @@
  */
 :root[data-theme="light"] {
   --color-text: var(--light-color-text);
+  --color-ink-nav: var(--light-color-ink-nav);
+  --color-ink-2: var(--light-color-ink-2);
+  --color-control: var(--light-color-control);
   --color-background: var(--light-color-background);
   --color-surface: var(--light-color-surface);
   --color-surface-high: var(--light-color-surface-high);
@@ -196,6 +221,9 @@
 
 :root[data-theme="dark"] {
   --color-text: var(--dark-color-text);
+  --color-ink-nav: var(--dark-color-ink-nav);
+  --color-ink-2: var(--dark-color-ink-2);
+  --color-control: var(--dark-color-control);
   --color-background: var(--dark-color-background);
   --color-surface: var(--dark-color-surface);
   --color-surface-high: var(--dark-color-surface-high);

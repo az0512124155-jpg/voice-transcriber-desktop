@@ -11,32 +11,6 @@ interface AlertProps {
   className?: string;
 }
 
-const variantStyles: Record<
-  AlertVariant,
-  { container: string; icon: string; text: string }
-> = {
-  error: {
-    container: "bg-error-wash",
-    icon: "text-error",
-    text: "text-error",
-  },
-  warning: {
-    container: "bg-warning-wash",
-    icon: "text-warning",
-    text: "text-warning",
-  },
-  info: {
-    container: "bg-wash",
-    icon: "text-ink-2",
-    text: "text-ink-2",
-  },
-  success: {
-    container: "bg-moss-wash",
-    icon: "text-moss",
-    text: "text-moss",
-  },
-};
-
 const variantIcons: Record<AlertVariant, React.ElementType> = {
   error: AlertCircle,
   warning: AlertTriangle,
@@ -50,15 +24,14 @@ export const Alert: React.FC<AlertProps> = ({
   children,
   className = "",
 }) => {
-  const styles = variantStyles[variant];
   const Icon = variantIcons[variant];
 
   return (
     <div
-      className={`flex items-start gap-3 p-4 ${styles.container} ${contained ? "" : "rounded-lg"} ${className}`}
+      className={`vt-alert vt-alert--${variant}${contained ? " vt-alert--contained" : ""} ${className}`}
     >
-      <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${styles.icon}`} />
-      <p className={`text-sm ${styles.text}`}>{children}</p>
+      <Icon className="vt-alert__icon" />
+      <p className="vt-alert__body">{children}</p>
     </div>
   );
 };

@@ -200,6 +200,51 @@ function fixDeclarations(css) {
   );
 }
 
+/** The stylesheet with every @supports block cut out. */
+function stripSupportsBlocks(css) {
+  let out = "";
+  let i = 0;
+  for (;;) {
+    const at = css.indexOf("@supports", i);
+    if (at < 0) {
+      out += css.slice(i);
+      break;
+    }
+    out += css.slice(i, at);
+    const open = css.indexOf("{", at);
+    if (open < 0) break;
+    let depth = 0;
+    let j = open;
+    for (; j < css.length; j += 1) {
+      if (css[j] === "{") depth += 1;
+      else if (css[j] === "}") {
+        depth -= 1;
+        if (depth === 0) break;
+      }
+    }
+    i = j + 1;
+  }
+  return out;
+}
+
+/** Occurrences of `needle` that no @supports guard is protecting. */
+function findOutsideSupports(css, needle) {
+  const bare = stripSupportsBlocks(css);
+  const hits = [];
+  let i = 0;
+  for (;;) {
+    const at = bare.indexOf(needle, i);
+    if (at < 0) break;
+    hits.push(
+      bare
+        .slice(Math.max(0, at - 60), at + needle.length + 40)
+        .replace(/\s+/g, " "),
+    );
+    i = at + needle.length;
+  }
+  return hits;
+}
+
 async function main() {
   // Only the main window gets the opaque fallback; the recording overlay is a
   // transparent panel and must stay one.
@@ -229,6 +274,18 @@ async function main() {
       if (next.includes(banned)) {
         throw new Error(`${name} still contains ${banned} after the legacy pass`);
       }
+    }
+
+    // color-mix() is allowed only inside a feature query, where the plain
+    // value above it is what an older engine paints. Anywhere else it is a
+    // declaration that engine throws away — and when it sits in a custom
+    // property it takes every var() that reads it down with it, which is how
+    // the dictation panel once turned transparent.
+    const stray = findOutsideSupports(next, "color-mix(");
+    if (stray.length > 0) {
+      throw new Error(
+        `${name} uses color-mix() outside @supports near: ${stray[0]}`,
+      );
     }
 
     await writeFile(file, next, "utf8");

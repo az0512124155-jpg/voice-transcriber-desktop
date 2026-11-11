@@ -8,6 +8,7 @@ import React, {
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { readFile } from "@tauri-apps/plugin-fs";
 import {
+  AudioLines,
   Check,
   Copy,
   FileAudio,
@@ -49,14 +50,12 @@ const IconButton: React.FC<{
   children: React.ReactNode;
 }> = ({ onClick, title, disabled, active, children }) => (
   <button
+    type="button"
     onClick={onClick}
     disabled={disabled}
-    className={`p-1.5 rounded-md flex items-center justify-center transition-colors cursor-pointer disabled:cursor-not-allowed disabled:text-text/20 ${
-      active
-        ? "text-logo-primary hover:text-logo-primary"
-        : "text-ink-3 hover:text-logo-primary"
-    }`}
     title={title}
+    aria-label={title}
+    className={`vt-icon-btn${active ? " vt-icon-btn--active" : ""}`}
   >
     {children}
   </button>
@@ -67,36 +66,28 @@ const PAGE_SIZE = 30;
 // Long text folds to this many lines until "Show more".
 const FOLDED_LINES = 4;
 
-// The pulse of an entry's text while it's being transcribed.
-const TRANSCRIBE_PULSE = {
-  animation: "transcribe-pulse 3s ease-in-out infinite",
-};
-
-const TranscribePulseKeyframes: React.FC = () => (
-  <style>{`
-    @keyframes transcribe-pulse {
-      0%, 100% { color: var(--color-ink-3); }
-      50% { color: var(--color-text); }
-    }
-  `}</style>
-);
-
 // A dropped or picked file while its audio is read, before it's an entry.
 const FileReadRow: React.FC<{ read: FileRead }> = ({ read }) => {
   const { t } = useTranslation();
   return (
-    <div className="px-4 py-2 pb-5 flex flex-col gap-3">
-      <span
-        className="flex items-center gap-1 min-w-0 h-7 text-sm text-ink-3"
-        title={read.name}
-      >
-        <FileAudio width={14} height={14} className="shrink-0" />
-        <span className="truncate">{read.name}</span>
-      </span>
-      <p className="italic text-sm w-full" style={TRANSCRIBE_PULSE}>
-        <TranscribePulseKeyframes />
-        {t("settings.history.readingFile")}
-      </p>
+    <div className="vt-history__item">
+      <div className="vt-history__head">
+        <div className="vt-history__meta">
+          <FileAudio
+            width={13}
+            height={13}
+            className="vt-history__source-icon"
+          />
+          <span className="vt-history__source-name" title={read.name}>
+            {read.name}
+          </span>
+        </div>
+      </div>
+      <div className="vt-history__body">
+        <p className="vt-history__text vt-history__text--pending">
+          {t("settings.history.readingFile")}
+        </p>
+      </div>
     </div>
   );
 };
@@ -112,14 +103,8 @@ const HeaderButton: React.FC<HeaderButtonProps> = ({
   label,
   icon: Icon,
 }) => (
-  <Button
-    onClick={onClick}
-    variant="secondary"
-    size="sm"
-    className="flex items-center gap-2"
-    title={label}
-  >
-    <Icon className="w-4 h-4" />
+  <Button onClick={onClick} variant="secondary" size="sm" title={label}>
+    <Icon className="vt-btn__icon" />
     <span>{label}</span>
   </Button>
 );
@@ -307,42 +292,53 @@ export const HistorySettings: React.FC = () => {
 
   if (loading) {
     content = (
-      <div className="px-4 py-3 text-center text-ink-2">
-        {t("settings.history.loading")}
+      <div className="vt-history__state">
+        <span className="vt-spinner" />
+        <span>{t("settings.history.loading")}</span>
       </div>
     );
   } else if (entries.length === 0 && reads.length === 0) {
     content = (
-      <div className="px-4 py-3 text-center text-ink-2">
-        {t("settings.history.empty")}
+      <div className="vt-history__empty">
+        <span className="vt-history__empty-badge">
+          <AudioLines width={22} height={22} />
+        </span>
+        <p className="vt-history__empty-text">{t("settings.history.empty")}</p>
+        <Button
+          onClick={transcribeFile}
+          variant="secondary"
+          size="sm"
+          className="vt-history__empty-action"
+        >
+          <FilePlus className="vt-btn__icon" />
+          <span>{t("settings.history.transcribeFile")}</span>
+        </Button>
       </div>
     );
   } else {
     content = (
-      <>
-        <AudioPlayerGroup>
-          <div className="divide-y divide-line">
-            {reads.map((read) => (
-              <FileReadRow key={`read-${read.id}`} read={read} />
-            ))}
-            {entries.map((entry) => (
-              <HistoryEntryComponent
-                key={entry.id}
-                entry={entry}
-                job={jobs[entry.id]}
-                onToggleSaved={() => toggleSaved(entry.id)}
-                onCopyText={() => copyToClipboard(entry.transcription_text)}
-                getAudioUrl={getAudioUrl}
-                deleteAudio={deleteAudioEntry}
-                retryTranscription={commands.retryHistoryEntryTranscription}
-                cancelTranscription={commands.cancelHistoryEntryTranscription}
-              />
-            ))}
-          </div>
-        </AudioPlayerGroup>
-        {/* Sentinel for infinite scroll */}
-        <div ref={sentinelRef} className="h-1" />
-      </>
+      <AudioPlayerGroup>
+        <div className="vt-history">
+          {reads.map((read) => (
+            <FileReadRow key={`read-${read.id}`} read={read} />
+          ))}
+          {entries.map((entry) => (
+            <HistoryEntryComponent
+              key={entry.id}
+              entry={entry}
+              job={jobs[entry.id]}
+              onToggleSaved={() => toggleSaved(entry.id)}
+              onCopyText={() => copyToClipboard(entry.transcription_text)}
+              getAudioUrl={getAudioUrl}
+              deleteAudio={deleteAudioEntry}
+              retryTranscription={commands.retryHistoryEntryTranscription}
+              cancelTranscription={commands.cancelHistoryEntryTranscription}
+            />
+          ))}
+          {/* Sentinel for infinite scroll */}
+          <div ref={sentinelRef} className="vt-history__tail" />
+        </div>
+      </AudioPlayerGroup>
     );
   }
 
@@ -363,7 +359,7 @@ export const HistorySettings: React.FC = () => {
             icon={FolderOpen}
           />
         </div>
-        <div className="vt-group__card">{content}</div>
+        <div className="vt-group__card vt-group__card--clip">{content}</div>
       </section>
     </div>
   );
@@ -458,21 +454,24 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
   }
 
   return (
-    <div className="px-4 py-2 pb-5 flex flex-col gap-3">
-      <div className="flex justify-between items-center gap-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <p className="text-sm font-medium shrink-0">{formattedDate}</p>
+    <div className="vt-history__item">
+      <div className="vt-history__head">
+        <div className="vt-history__meta">
+          <p className="vt-history__date">{formattedDate}</p>
           {entry.source_name && (
-            <span
-              className="flex items-center gap-1 min-w-0 text-sm text-ink-3"
-              title={entry.source_name}
-            >
-              <FileAudio width={14} height={14} className="shrink-0" />
-              <span className="truncate">{entry.source_name}</span>
+            <span className="vt-history__source" title={entry.source_name}>
+              <FileAudio
+                width={13}
+                height={13}
+                className="vt-history__source-icon"
+              />
+              <span className="vt-history__source-name">
+                {entry.source_name}
+              </span>
             </span>
           )}
         </div>
-        <div className="flex items-center shrink-0">
+        <div className="vt-history__actions">
           <IconButton
             onClick={handleCopyText}
             disabled={!hasTranscription || retrying}
@@ -527,30 +526,27 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
         </div>
       </div>
 
-      <div className="flex flex-col items-start gap-1 pb-2">
+      <div className="vt-history__body">
         <p
           ref={textRef}
-          className={`italic text-sm w-full ${
+          className={`vt-history__text ${
             retrying
-              ? ""
+              ? "vt-history__text--pending"
               : hasTranscription
-                ? "text-text select-text cursor-text whitespace-pre-wrap break-words"
-                : "text-ink-3"
+                ? ""
+                : "vt-history__text--muted"
           }`}
           style={
-            retrying
-              ? TRANSCRIBE_PULSE
-              : folded
-                ? {
-                    display: "-webkit-box",
-                    WebkitLineClamp: FOLDED_LINES,
-                    WebkitBoxOrient: "vertical",
-                    overflow: "hidden",
-                  }
-                : undefined
+            folded
+              ? {
+                  display: "-webkit-box",
+                  WebkitLineClamp: FOLDED_LINES,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                }
+              : undefined
           }
         >
-          {retrying && <TranscribePulseKeyframes />}
           {retrying
             ? progressText
             : hasTranscription
@@ -564,7 +560,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
           <button
             type="button"
             onClick={() => setExpanded(!expanded)}
-            className="text-xs font-medium text-ink-3 hover:text-logo-primary cursor-pointer"
+            className="vt-history__more"
           >
             {expanded
               ? t("settings.history.showLess")
@@ -573,7 +569,7 @@ const HistoryEntryComponent: React.FC<HistoryEntryProps> = ({
         )}
       </div>
 
-      <AudioPlayer onLoadRequest={handleLoadAudio} className="w-full" />
+      <AudioPlayer onLoadRequest={handleLoadAudio} />
     </div>
   );
 };

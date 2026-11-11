@@ -120,6 +120,36 @@ pub fn open_app_data_dir(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// Clears a stale Accessibility grant.
+///
+/// macOS binds the grant to the code signature of the binary. A rebuild that
+/// carries a different signature leaves the old row switched **on** in System
+/// Settings while `AXISProcessTrusted()` keeps answering `false` — the toggle
+/// looks granted and does nothing, so the only way through was to remove the
+/// app and add it again. Dropping the stale entry turns the toggle off, after
+/// which switching it back on registers the binary that is actually running.
+///
+/// Only called when the app is *not* trusted, so a working grant is never
+/// cleared. No-op away from macOS.
+#[specta::specta]
+#[tauri::command]
+pub fn reset_accessibility_permission() -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        let bundle_id = "il.voicetranscriber.desktop";
+        let output = std::process::Command::new("/usr/bin/tccutil")
+            .args(["reset", "Accessibility", bundle_id])
+            .output()
+            .map_err(|e| format!("Failed to run tccutil: {}", e))?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!("tccutil failed: {}", stderr.trim()));
+        }
+        log::info!("Cleared the stale Accessibility grant for {}", bundle_id);
+    }
+    Ok(())
+}
+
 /// Check if Apple Intelligence is available on this device.
 /// Called by the frontend when the user selects Apple Intelligence provider.
 #[specta::specta]

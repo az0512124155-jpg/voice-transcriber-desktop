@@ -641,6 +641,27 @@ async openAppDataDir() : Promise<Result<null, string>> {
 }
 },
 /**
+ * Clears a stale Accessibility grant.
+ * 
+ * macOS binds the grant to the code signature of the binary. A rebuild that
+ * carries a different signature leaves the old row switched **on** in System
+ * Settings while `AXISProcessTrusted()` keeps answering `false` — the toggle
+ * looks granted and does nothing, so the only way through was to remove the
+ * app and add it again. Dropping the stale entry turns the toggle off, after
+ * which switching it back on registers the binary that is actually running.
+ * 
+ * Only called when the app is *not* trusted, so a working grant is never
+ * cleared. No-op away from macOS.
+ */
+async resetAccessibilityPermission() : Promise<Result<null, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("reset_accessibility_permission") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
  * Check if Apple Intelligence is available on this device.
  * Called by the frontend when the user selects Apple Intelligence provider.
  */
@@ -1311,6 +1332,11 @@ export type LanguageDetectionMode =
 /**
  * Which languages a single recording is allowed to contain. This is the
  * fork's routing policy between the two bundled engines.
+ * 
+ * The Hebrew model owns every recording it can hear Hebrew in — it already
+ * writes English words inside a Hebrew sentence in Latin script, so there is
+ * nothing for a second engine to improve there. Whisper only takes over a
+ * recording that contains no Hebrew at all.
  */
 export type LanguageMode = 
 /**

@@ -177,8 +177,11 @@ export const usePermissions = (preview: boolean): Permissions => {
 
   useEffect(() => stopPolling, []);
 
-  // A waiting row whose answer was no (or never came): ask again.
-  const recheckWaiting = useCallback(async () => {
+  // A row that was waiting, or that still needs allowing, is re-read when the
+  // window comes back to the front — that is the moment the user returns from
+  // System Settings. Leaving the `needed` rows out is what made a grant made
+  // outside the app invisible until the next launch.
+  const recheck = useCallback(async () => {
     try {
       if (isWindows) {
         const mic = await hasWindowsMicrophoneAccess();
@@ -189,36 +192,54 @@ export const usePermissions = (preview: boolean): Permissions => {
       }
       if (!isMacOS) return;
       const [acc, mic] = await readMac();
-      setAccessibility((prev) =>
-        prev === "waiting" ? (acc ? "granted" : "needed") : prev,
-      );
+      setAccessibility((prev) => {
+        if (acc && prev !== "granted") void initializeAfterAccessibility();
+        return acc ? "granted" : prev === "waiting" ? "needed" : prev;
+      });
       setMicrophone((prev) =>
-        prev === "waiting" ? (mic ? "granted" : "needed") : prev,
+        mic ? "granted" : prev === "waiting" ? "needed" : prev,
       );
+      if (acc && mic) {
+        stopPolling();
+        await onAllGranted();
+      }
     } catch (error) {
       console.warn("Failed to recheck permissions:", error);
     }
-  }, [hasWindowsMicrophoneAccess, isMacOS, isWindows]);
+  }, [hasWindowsMicrophoneAccess, isMacOS, isWindows, onAllGranted]);
 
   const waiting = microphone === "waiting" || accessibility === "waiting";
+  const needsAttention =
+    waiting || microphone === "needed" || accessibility === "needed";
   useEffect(() => {
-    if (preview || !waiting) return;
+    if (preview || !needsAttention) return;
     const unlisten = getCurrentWindow().onFocusChanged(({ payload }) => {
-      if (payload) recheckWaiting();
+      if (payload) recheck();
     });
-    // Only while Handy is in front: away in Settings, the row keeps waiting.
+    // Only while the app is in front: away in Settings, the row keeps waiting.
     const timer = setTimeout(() => {
-      if (document.hasFocus()) recheckWaiting();
+      if (document.hasFocus()) recheck();
     }, WAITING_TIMEOUT_MS);
     return () => {
       clearTimeout(timer);
       unlisten.then((off) => off());
     };
-  }, [preview, waiting, recheckWaiting]);
+  }, [preview, needsAttention, recheck]);
 
   const requestAccessibility = async () => {
     if (preview) return;
     try {
+      if (isMacOS) {
+        // macOS binds the grant to the code signature, so an update leaves the
+        // old row switched on while `AXIsProcessTrusted()` still answers false.
+        // Clearing that stale entry turns the toggle off, and switching it back
+        // on then registers the binary that is actually running. This is only
+        // reached while the app is untrusted, so a working grant is untouched.
+        const reset = await commands.resetAccessibilityPermission();
+        if (reset.status !== "ok") {
+          console.warn("Failed to clear the stale grant:", reset.error);
+        }
+      }
       await requestAccessibilityPermission();
       setAccessibility("waiting");
       startPolling();
@@ -239,7 +260,7 @@ export const usePermissions = (preview: boolean): Permissions => {
         // A prompt takes focus from Handy; still in front a moment later
         // means there was none (denied before), so go back to asking.
         setTimeout(() => {
-          if (document.hasFocus()) recheckWaiting();
+          if (document.hasFocus()) recheck();
         }, 1000);
       }
       setMicrophoneAsked(true);

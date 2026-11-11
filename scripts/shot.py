@@ -13,6 +13,14 @@ from PIL import Image
 user32 = ctypes.windll.user32
 gdi32 = ctypes.windll.gdi32
 
+# Without this the process sees DPI-virtualised coordinates: on a 200% display
+# GetWindowRect reports half the real size and PrintWindow hands back a crop of
+# the top-left quadrant of the surface.
+try:
+    ctypes.windll.shcore.SetProcessDpiAwareness(2)  # per-monitor aware
+except Exception:
+    user32.SetProcessDPIAware()
+
 PW_RENDERFULLCONTENT = 0x00000002
 
 

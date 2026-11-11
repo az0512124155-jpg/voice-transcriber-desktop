@@ -549,10 +549,21 @@
   transition: transform 160ms ease;
 }
 
+/* In RTL the knob rests against the physical right edge, not the left one.
+   Without this the checked -17px push starts at x=3 and ends at x=-14:
+   the knob leaves the 42px track entirely. Explicit physical properties here,
+   like the rest of this file — no inset-inline-start on old WebKit. */
+[dir="rtl"] .vt-switch__knob {
+  left: auto;
+  right: 3px;
+}
+
 .vt-switch__input:checked + .vt-switch__track {
   background: var(--color-background-ui);
 }
 
+/* Travel = 42 (track) - 19 (knob) - 2 x 3 (inset) = 17px. RTL mirrors only
+   the sign; the resting edge above is what keeps both ends inside the track. */
 .vt-switch__input:checked + .vt-switch__track .vt-switch__knob {
   transform: translateX(17px);
 }

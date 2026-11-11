@@ -62,7 +62,6 @@ const Footer: React.FC<FooterProps> = ({ onShowHistory }) => {
           className="vt-statusbar__version"
           title={build ? `v${version} · ${build}` : undefined}
         >
-          {/* eslint-disable-next-line i18next/no-literal-string */}
           {version ? `v${version}${build ? ` · ${build}` : ""}` : (build ?? "")}
         </span>
       </div>

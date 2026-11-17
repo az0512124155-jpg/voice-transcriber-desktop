@@ -614,7 +614,7 @@ fn default_model() -> String {
     "".to_string()
 }
 
-const CURRENT_SETTINGS_SCHEMA_VERSION: u32 = 2;
+const CURRENT_SETTINGS_SCHEMA_VERSION: u32 = 3;
 
 fn default_settings_schema_version() -> u32 {
     CURRENT_SETTINGS_SCHEMA_VERSION
@@ -633,11 +633,24 @@ fn default_translate_to_english() -> bool {
 }
 
 fn default_start_hidden() -> bool {
-    false
+    // On macOS the app is meant to live in the menu bar: the dictation hotkey
+    // must work without a window being open. The window is still created (and
+    // the webview still loads); it just starts hidden. Other platforms keep
+    // the original visible-on-launch behavior.
+    #[cfg(target_os = "macos")]
+    {
+        true
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        false
+    }
 }
 
 fn default_autostart_enabled() -> bool {
-    false
+    // Launch at login so the local engine and its global hotkey are available
+    // immediately after boot, with no need to open the app first.
+    true
 }
 
 // Fork: this build has no update server, so checking would only ever fail.
@@ -1370,10 +1383,19 @@ fn apply_settings_migrations(
             settings.transcribe_accelerator = TranscribeAcceleratorSetting::Auto;
         }
     }
-    if stored_schema_version < 2 {
-        // transcribe.cpp 0.2 replaced integer registry indices with opaque
-        // process-local handles. Clear every old index once.
-        settings.transcribe_gpu_device = default_transcribe_gpu_device();
+    if stored_schema_version < 3 {
+        // Background dictation: the app must survive closing the window and be
+        // present after login so the global hotkey works without opening a
+        // window. Existing stores still hold autostart_enabled=false and
+        // start_hidden=false from before those defaults changed; flip them once
+        // so an upgrade actually fixes the reported behavior. The tray icon is
+        // required for a hidden app to be reachable at all.
+        #[cfg(target_os = "macos")]
+        {
+            settings.autostart_enabled = true;
+            settings.start_hidden = true;
+            settings.show_tray_icon = true;
+        }
         settings.settings_schema_version = CURRENT_SETTINGS_SCHEMA_VERSION;
         updated = true;
     }

@@ -130,6 +130,69 @@ fn show_main_window(app: &AppHandle) {
     );
 }
 
+/// Hide the settings window and leave the local engine alive in the menu bar.
+/// Shared by the window close button, Cmd+Q (custom app menu), and the
+/// ExitRequested safety net.
+fn hide_to_tray(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        if let Err(e) = window.hide() {
+            log::error!("Failed to hide webview window: {}", e);
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let settings = get_settings(app);
+        let tray_visible = settings.show_tray_icon && !app.state::<CliArgs>().no_tray;
+        if tray_visible {
+            if let Err(e) = app.set_activation_policy(tauri::ActivationPolicy::Accessory) {
+                log::error!("Failed to set activation policy to Accessory: {}", e);
+            }
+        }
+        // With no tray icon, don't demote: the Dock icon is the only way back.
+    }
+}
+
+/// macOS app menu. Tauri's default Quit uses the `terminate:` selector, which
+/// tears down the process before Tauri can intercept it. Replace just that
+/// item with a normal menu event so Cmd+Q hides to the menu bar, and add an
+/// explicit, unaccelerated "Exit" item for a real quit.
+#[cfg(target_os = "macos")]
+fn build_app_menu(app: &AppHandle) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
+    use tauri::menu::{Menu, MenuItem, MenuItemKind};
+
+    let menu = Menu::default(app)?;
+
+    // The application submenu is the first one on macOS ("Voice Transcriber").
+    // MenuItemKind is not Clone, so move the first item out of the vector.
+    if let Some(MenuItemKind::Submenu(app_submenu)) = menu.items()?.into_iter().next() {
+        for (index, item) in app_submenu.items()?.iter().enumerate() {
+            let is_quit = matches!(item, MenuItemKind::Predefined(p) if p
+                .text()
+                .map(|t| t.to_lowercase().contains("quit") || t.to_lowercase().contains("exit"))
+                .unwrap_or(false));
+            if is_quit {
+                let _ = app_submenu.remove_at(index);
+                break;
+            }
+        }
+
+        let hide_item = MenuItem::with_id(
+            app,
+            "hide_to_tray",
+            "Hide to Menu Bar",
+            true,
+            Some("Cmd+Q"),
+        )?;
+        let exit_item =
+            MenuItem::with_id(app, "exit_app", "Exit Voice Transcriber", true, None::<&str>)?;
+        app_submenu.append(&hide_item)?;
+        app_submenu.append(&exit_item)?;
+    }
+
+    Ok(menu)
+}
+
 /// Choose the macOS activation policy the process *launches* with.
 ///
 /// Must run between `build()` and `run()`: that is the only point where
@@ -328,6 +391,14 @@ fn initialize_core_logic(app_handle: &AppHandle) {
                 cancel_current_operation(app);
             }
             "quit" => {
+                // Explicit quit from the tray menu is the only way to actually
+                // terminate (its accelerator is Ctrl+Q on other platforms).
+                app.exit(0);
+            }
+            "hide_to_tray" => {
+                hide_to_tray(app);
+            }
+            "exit_app" => {
                 app.exit(0);
             }
             id if id.starts_with("model_select:") => {
@@ -899,7 +970,10 @@ pub fn run(cli_args: CliArgs) {
 
     #[cfg(target_os = "macos")]
     {
-        builder = builder.plugin(tauri_nspanel::init());
+        builder = builder
+            .plugin(tauri_nspanel::init())
+            .enable_macos_default_menu(false)
+            .menu(build_app_menu);
     }
 
     // Single-instance forwards CLI args to an already-running Handy and exits.
@@ -932,6 +1006,14 @@ pub fn run(cli_args: CliArgs) {
     #[allow(unused_mut)]
     let mut app = builder
         .plugin(tauri_plugin_fs::init())
+        // App-menu events (macOS "Hide to Menu Bar" / "Exit"): the tray menu has
+        // its own handler above, these IDs come from build_app_menu.
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "hide_to_tray" => hide_to_tray(app),
+            "exit_app" => app.exit(0),
+            "settings" => show_main_window(app),
+            _ => {}
+        })
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_os::init())
@@ -1094,7 +1176,22 @@ pub fn run(cli_args: CliArgs) {
             // Secure Input monitor (macOS): detects stuck secure input that
             // silently blocks keyed shortcuts, warns the user, and activates
             // the Carbon fallback. See secure_input.rs and issue #1578.
+            // Must be initialized before initialize_shortcuts, whose reconcile
+            // pass reads this state.
             secure_input::init(&app_handle);
+
+            // The dictation hotkey must be live even when the app starts hidden
+            // with no window interaction. On macOS the frontend normally does
+            // this after the Accessibility check, but that check is skipped on
+            // a login-item launch with no visible onboarding; register here as
+            // well (the command is idempotent, so the frontend call is a no-op).
+            // Only when onboarding is done — a fresh install still needs the
+            // permission prompt in the UI before a global hook can be trusted.
+            if settings.onboarding_completed {
+                if let Err(e) = commands::initialize_shortcuts(app_handle.clone()) {
+                    log::warn!("Startup shortcut registration failed: {}", e);
+                }
+            }
 
             // Populate the overlay-enabled cache from initial settings so the
             // audio path (overlay::emit_levels, called ~24 Hz during recording)
@@ -1144,24 +1241,7 @@ pub fn run(cli_args: CliArgs) {
         .on_window_event(|window, event| match event {
             tauri::WindowEvent::CloseRequested { api, .. } => {
                 api.prevent_close();
-                let _res = window.hide();
-
-                #[cfg(target_os = "macos")]
-                {
-                    let settings = get_settings(window.app_handle());
-                    let tray_visible =
-                        settings.show_tray_icon && !window.app_handle().state::<CliArgs>().no_tray;
-                    if tray_visible {
-                        // Tray is available: hide the dock icon, app lives in the tray
-                        let res = window
-                            .app_handle()
-                            .set_activation_policy(tauri::ActivationPolicy::Accessory);
-                        if let Err(e) = res {
-                            log::error!("Failed to set activation policy: {}", e);
-                        }
-                    }
-                    // No tray: keep the dock icon visible so the user can reopen
-                }
+                hide_to_tray(window.app_handle());
             }
             tauri::WindowEvent::ThemeChanged(theme) => {
                 log::info!("Theme changed to: {:?}", theme);
@@ -1181,6 +1261,23 @@ pub fn run(cli_args: CliArgs) {
     // `app` is only used by the macOS arm.
     #[cfg_attr(not(target_os = "macos"), allow(unused_variables))]
     app.run(|app, event| match &event {
+        #[cfg(target_os = "macos")]
+        tauri::RunEvent::ExitRequested { code: None, api, .. } => {
+            // macOS Cmd+Q (code=None means user interaction, not a programmatic
+            // app.exit()). The user wants dictation to keep working without the
+            // app being "open", so turn it into a hide instead of a real exit.
+            // The tray menu's Quit calls app.exit(0) (code=Some) and still exits.
+            let settings = get_settings(app);
+            let tray_visible =
+                settings.show_tray_icon && !app.state::<CliArgs>().no_tray;
+            if tray_visible {
+                log::info!("ExitRequested from user interaction: hiding to menu bar");
+                api.prevent_exit();
+                hide_to_tray(app);
+            }
+            // With no tray icon, don't trap the user: an invisible, unquittable
+            // app would be worse than one that exits on Cmd+Q.
+        }
         #[cfg(target_os = "macos")]
         tauri::RunEvent::Reopen { .. } => {
             // Fired when the already-running bundle is launched again from

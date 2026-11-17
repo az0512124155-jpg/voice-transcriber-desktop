@@ -659,9 +659,11 @@ fn build_menu(app: &AppHandle, inputs: &MenuInputs) -> tauri::Result<(Menu<tauri
         })
         .transpose()?;
 
-    // Platform-specific accelerators
+    // Platform-specific accelerators. On macOS Cmd+Q belongs to the app menu's
+    // "Hide to Menu Bar" item; keeping it here too would give the tray's Quit a
+    // second accelerator that bypasses the hide-to-tray behavior.
     #[cfg(target_os = "macos")]
-    let (settings_accelerator, quit_accelerator) = (Some("Cmd+,"), Some("Cmd+Q"));
+    let (settings_accelerator, quit_accelerator) = (Some("Cmd+,"), None::<&str>);
     #[cfg(not(target_os = "macos"))]
     let (settings_accelerator, quit_accelerator) = (Some("Ctrl+,"), Some("Ctrl+Q"));
 

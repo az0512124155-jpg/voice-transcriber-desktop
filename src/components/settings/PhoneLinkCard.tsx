@@ -61,10 +61,23 @@ export const PhoneLinkCard: React.FC = () => {
           <p className="vt-text-xs vt-text-secondary vt-mt-2">
             תוקף 5 דקות · נעילה אחרי 5 ניסיונות שגויים
           </p>
+          <p className="vt-text-xs vt-mt-3">
+            בטלפון: מחברת שיעור ← חבר למחשב. האפליקציה מאתרת את המחשב לבד —
+            כל מה שצריך להקליד הוא הקוד הזה.
+          </p>
+          <p className="vt-text-xs vt-text-secondary vt-mt-1">
+            אין צורך בהעתקת כתובת IP או טביעת אצבע. שני המכשירים חייבים להיות
+            על אותה רשת Wi-Fi.
+          </p>
           {status.fingerprint && (
-            <p className="vt-text-xs vt-mt-2 vt-break-all">
-              טביעת אישור: <code>{status.fingerprint}</code>
-            </p>
+            <details className="vt-mt-2">
+              <summary className="vt-text-xs vt-text-secondary vt-cursor-pointer">
+                פרטים טכניים
+              </summary>
+              <p className="vt-text-xs vt-mt-1 vt-break-all">
+                טביעת אישור: <code>{status.fingerprint}</code>
+              </p>
+            </details>
           )}
         </div>
       )}

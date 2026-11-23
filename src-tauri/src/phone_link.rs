@@ -18,7 +18,8 @@ use axum_server::Handle;
 use ring::rand::{SecureRandom, SystemRandom};
 use serde::{Deserialize, Serialize};
 use specta::Type;
-use std::sync::{Mutex, OnceLock};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 
@@ -27,6 +28,8 @@ const CODE_TTL: Duration = Duration::from_secs(300);
 const MAX_ATTEMPTS: u32 = 5;
 const LOCK_TIME: Duration = Duration::from_secs(60);
 pub const DEFAULT_PORT: u16 = 38381;
+/// UDP port used only for LAN discovery beacons. No secrets travel on it.
+pub const DISCOVERY_PORT: u16 = 38382;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct PhoneLinkStatus {
@@ -81,6 +84,7 @@ pub struct SummarizeResponse {
 
 struct Shared {
     handle: Option<Handle>,
+    beacon_stop: Option<Arc<AtomicBool>>,
     token: String,
     fingerprint: String,
     code: String,
@@ -396,6 +400,93 @@ fn make_router(app: AppHandle) -> Router {
         .with_state(state)
 }
 
+/// Best-effort LAN IPv4. Connecting a UDP socket does not send a packet; it
+/// only asks the routing table which local address would be used.
+fn lan_ipv4() -> Option<String> {
+    let socket = std::net::UdpSocket::bind("0.0.0.0:0").ok()?;
+    socket.connect("8.8.8.8:80").ok()?;
+    socket
+        .local_addr()
+        .ok()
+        .map(|address| address.ip().to_string())
+}
+
+fn computer_name() -> String {
+    std::env::var("COMPUTERNAME")
+        .or_else(|_| std::env::var("HOSTNAME"))
+        .unwrap_or_else(|_| "Voice Transcriber PC".to_string())
+}
+
+/// Advertises the running bridge so the phone can find it without the user
+/// typing an IP address or a certificate fingerprint. The beacon contains no
+/// code and no token — only what is needed to open a pinned TLS connection.
+async fn beacon_loop(port: u16, fingerprint: String, stop: Arc<AtomicBool>) {
+    let payload = serde_json::json!({
+        "app": "Voice Transcriber",
+        "v": env!("CARGO_PKG_VERSION"),
+        "name": computer_name(),
+        "ip": lan_ipv4().unwrap_or_else(|| "127.0.0.1".to_string()),
+        "port": port,
+        "fp": fingerprint,
+    })
+    .to_string();
+
+    // Responder side: the phone broadcasts a short probe to DISCOVERY_PORT and
+    // waits for a unicast reply on its own ephemeral port. This is more
+    // reliable than the phone listening on a fixed broadcast port, because a
+    // unicast reply always reaches the sender while a broadcast may be dropped
+    // by the receiving Wi-Fi stack or blocked by AP isolation.
+    let reply_payload = payload.clone();
+    let reply_stop = stop.clone();
+    tokio::spawn(async move {
+        let listener = match tokio::net::UdpSocket::bind(("0.0.0.0", DISCOVERY_PORT)).await {
+            Ok(socket) => socket,
+            Err(error) => {
+                log::debug!("phone link discovery listener unavailable: {error}");
+                return;
+            }
+        };
+        let mut buffer = [0u8; 512];
+        while !reply_stop.load(Ordering::Relaxed) {
+            let received = tokio::time::timeout(
+                Duration::from_millis(500),
+                listener.recv_from(&mut buffer),
+            )
+            .await;
+            match received {
+                Ok(Ok((_len, peer))) => {
+                    let _ = listener.send_to(reply_payload.as_bytes(), peer).await;
+                }
+                Ok(Err(error)) => {
+                    log::debug!("phone link discovery listener stopped: {error}");
+                    break;
+                }
+                Err(_) => continue,
+            }
+        }
+    });
+
+    let socket = match tokio::net::UdpSocket::bind("0.0.0.0:0").await {
+        Ok(socket) => socket,
+        Err(error) => {
+            log::warn!("phone link discovery socket failed: {error}");
+            return;
+        }
+    };
+    if let Err(error) = socket.set_broadcast(true) {
+        log::warn!("phone link discovery broadcast failed: {error}");
+        return;
+    }
+    let target = format!("255.255.255.255:{DISCOVERY_PORT}");
+
+    while !stop.load(Ordering::Relaxed) {
+        if let Err(error) = socket.send_to(payload.as_bytes(), &target).await {
+            log::debug!("phone link discovery beacon failed: {error}");
+        }
+        tokio::time::sleep(Duration::from_secs(1)).await;
+    }
+}
+
 #[tauri::command]
 #[specta::specta]
 pub fn phone_link_start(app: AppHandle, port: Option<u16>) -> Result<PhoneLinkStatus, String> {
@@ -435,6 +526,9 @@ pub fn phone_link_start(app: AppHandle, port: Option<u16>) -> Result<PhoneLinkSt
     let handle = Handle::new();
     let router = make_router(app.clone());
     let run_handle = handle.clone();
+    let beacon_stop = Arc::new(AtomicBool::new(false));
+    let beacon_stop_task = beacon_stop.clone();
+    let beacon_fingerprint = fingerprint.clone();
     std::thread::spawn(move || {
         let runtime = match tokio::runtime::Builder::new_multi_thread()
             .worker_threads(2)
@@ -448,6 +542,7 @@ pub fn phone_link_start(app: AppHandle, port: Option<u16>) -> Result<PhoneLinkSt
             }
         };
         runtime.block_on(async move {
+            tokio::spawn(beacon_loop(port, beacon_fingerprint, beacon_stop_task));
             if let Err(error) = axum_server::from_tcp_rustls(
                 std::net::TcpListener::bind(format!("0.0.0.0:{port}"))
                     .expect("port was already validated"),
@@ -465,6 +560,7 @@ pub fn phone_link_start(app: AppHandle, port: Option<u16>) -> Result<PhoneLinkSt
     let mut guard = shared().lock().map_err(|_| "state lock failed".to_string())?;
     *guard = Some(Shared {
         handle: Some(handle),
+        beacon_stop: Some(beacon_stop),
         token,
         fingerprint: fingerprint.clone(),
         code: make_code(),
@@ -496,10 +592,16 @@ pub fn phone_link_stop() -> Result<PhoneLinkStatus, String> {
 }
 
 fn stop_server_internal() -> Result<(), String> {
-    let handle = {
+    let (handle, beacon_stop) = {
         let mut guard = shared().lock().map_err(|_| "state lock failed".to_string())?;
-        guard.take().and_then(|state| state.handle)
+        guard
+            .take()
+            .map(|state| (state.handle, state.beacon_stop))
+            .unwrap_or((None, None))
     };
+    if let Some(stop) = beacon_stop {
+        stop.store(true, Ordering::Relaxed);
+    }
     if let Some(handle) = handle {
         handle.shutdown();
     }

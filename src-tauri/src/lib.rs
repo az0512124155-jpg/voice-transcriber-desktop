@@ -1227,9 +1227,12 @@ pub fn run(cli_args: CliArgs) {
             }
 
             // Show main window only if not starting hidden.
-            // CLI --start-hidden flag overrides the setting.
+            // The persisted start_hidden setting belongs to macOS menu-bar
+            // residency; honoring it on Windows launched the app with no
+            // visible window. The CLI --start-hidden flag still works everywhere.
             // But if permission onboarding is required, always show the window.
-            let should_hide = settings.start_hidden || cli_args.start_hidden;
+            let should_hide =
+                (cfg!(target_os = "macos") && settings.start_hidden) || cli_args.start_hidden;
             let should_force_show = should_force_show_permissions_window(&app_handle);
 
             // If start_hidden but tray is disabled, we must show the window

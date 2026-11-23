@@ -648,9 +648,17 @@ fn default_start_hidden() -> bool {
 }
 
 fn default_autostart_enabled() -> bool {
-    // Launch at login so the local engine and its global hotkey are available
-    // immediately after boot, with no need to open the app first.
-    true
+    // macOS menu-bar residency: launch at login so the local engine and its
+    // global hotkey are available immediately after boot. On other platforms
+    // the app opens normally, so there is nothing to keep alive in the tray.
+    #[cfg(target_os = "macos")]
+    {
+        true
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        false
+    }
 }
 
 // Fork: this build has no update server, so checking would only ever fail.

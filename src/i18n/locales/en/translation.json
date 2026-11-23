@@ -944,6 +944,12 @@
           "description": "On the phone: Lecture notebook → Connect to computer. The app finds this computer by itself; there is no IP address or fingerprint to copy."
         },
         "note": "Answers and summaries need an AI provider configured in settings."
+      },
+      "recording": {
+        "title": "Recording and transcription"
+      },
+      "ai": {
+        "title": "Answers and summaries (AI)"
       }
     }
   },

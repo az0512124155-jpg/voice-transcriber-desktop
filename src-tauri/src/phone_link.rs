@@ -26,6 +26,9 @@ use tauri::{AppHandle, Emitter};
 const ALPHABET: &[u8; 30] = b"ABCDEFGHJKLMNPQRSTUVWXYZ234567";
 const CODE_TTL: Duration = Duration::from_secs(300);
 const MAX_ATTEMPTS: u32 = 5;
+const MAX_PAIRINGS: u32 = 6;
+/// Cap on one AI call. Must stay below the phone's 90 s read timeout.
+const ASK_TIMEOUT: Duration = Duration::from_secs(50);
 const LOCK_TIME: Duration = Duration::from_secs(60);
 pub const DEFAULT_PORT: u16 = 38381;
 /// UDP port used only for LAN discovery beacons. No secrets travel on it.
@@ -89,6 +92,11 @@ struct Shared {
     fingerprint: String,
     code: String,
     code_created: Instant,
+    /// Successful pairings against the current code. The token is shared by
+    /// every device, so one code may legitimately bring in a phone and a
+    /// tablet; the cap is only there to keep a leaked code from enrolling an
+    /// unlimited number of devices.
+    pairings: u32,
     failures: u32,
     locked_until: Option<Instant>,
     port: u16,
@@ -195,6 +203,9 @@ async fn pair(State(_state): State<ServerState>, body: Json<PairRequest>) -> Res
         if current.code_created.elapsed() > CODE_TTL {
             return json_error(StatusCode::GONE, "pairing code expired");
         }
+        if current.pairings >= MAX_PAIRINGS {
+            return json_error(StatusCode::GONE, "pairing code already used up");
+        }
         if !code_matches(&body.code, &current.code) {
             current.failures += 1;
             if current.failures >= MAX_ATTEMPTS {
@@ -203,9 +214,14 @@ async fn pair(State(_state): State<ServerState>, body: Json<PairRequest>) -> Res
             }
             return json_error(StatusCode::UNAUTHORIZED, "invalid pairing code");
         }
-        // Single use: invalidate immediately after a successful exchange.
-        current.code = String::new();
-        current.code_created = Instant::now() - CODE_TTL;
+        // Multi-device: the code stays valid for its full TTL so a second
+        // device can enrol without restarting the bridge. It is retired once
+        // MAX_PAIRINGS devices have used it.
+        current.pairings += 1;
+        if current.pairings >= MAX_PAIRINGS {
+            current.code = String::new();
+            current.code_created = Instant::now() - CODE_TTL;
+        }
         let _ = current;
     }
     let (token, fingerprint) = {
@@ -284,17 +300,25 @@ async fn ask(State(state): State<ServerState>, headers: axum::http::HeaderMap, b
         "required": ["answer", "confidence", "abstain", "source"],
         "additionalProperties": false
     });
-    match crate::llm_client::send_chat_completion_with_schema(
-        &provider,
-        key,
-        &model,
-        prompt,
-        Some("Heuristic question answering for lecture notes. Cite the exact source when possible; abstain rather than speculate.".to_string()),
-        Some(schema),
-        true,
+    // A slow provider must not leave the phone waiting indefinitely. The phone
+    // client gives up at 90 s, so the bridge answers first with a clear message
+    // instead of letting the request die on the far side.
+    let completion = tokio::time::timeout(
+        ASK_TIMEOUT,
+        crate::llm_client::send_chat_completion_with_schema(
+            &provider,
+            key,
+            &model,
+            prompt,
+            Some("Heuristic question answering for lecture notes. Cite the exact source when possible; abstain rather than speculate.".to_string()),
+            Some(schema),
+            true,
+        ),
     )
     .await
-    {
+    .unwrap_or_else(|_| Err("provider timed out".to_string()));
+
+    match completion {
         Ok(Some(content)) => {
             let text = strip_think(&content);
             match serde_json::from_str::<serde_json::Value>(&text) {
@@ -359,17 +383,22 @@ async fn summarize(State(state): State<ServerState>, headers: axum::http::Header
         "required": ["summary", "key_points"],
         "additionalProperties": false
     });
-    match crate::llm_client::send_chat_completion_with_schema(
-        &provider,
-        key,
-        &model,
-        prompt,
-        None,
-        Some(schema),
-        true,
+    let completion = tokio::time::timeout(
+        ASK_TIMEOUT,
+        crate::llm_client::send_chat_completion_with_schema(
+            &provider,
+            key,
+            &model,
+            prompt,
+            None,
+            Some(schema),
+            true,
+        ),
     )
     .await
-    {
+    .unwrap_or_else(|_| Err("provider timed out".to_string()));
+
+    match completion {
         Ok(Some(content)) => {
             let text = strip_think(&content);
             match serde_json::from_str::<serde_json::Value>(&text) {
@@ -565,6 +594,7 @@ pub fn phone_link_start(app: AppHandle, port: Option<u16>) -> Result<PhoneLinkSt
         fingerprint: fingerprint.clone(),
         code: make_code(),
         code_created: Instant::now(),
+        pairings: 0,
         failures: 0,
         locked_until: None,
         port,

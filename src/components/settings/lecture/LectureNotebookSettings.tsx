@@ -2,13 +2,20 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { SettingsGroup } from "../../ui/SettingsGroup";
 import { PhoneLinkCard } from "../PhoneLinkCard";
+import { MicrophoneSelector } from "../MicrophoneSelector";
+import { LanguageModeSetting } from "../LanguageMode";
+import { VoiceActivityDetection } from "../VoiceActivityDetection";
+import { FillerWordRemoval } from "../FillerWordRemoval";
+import { PostProcessingSettingsApi } from "../post-processing/PostProcessingSettings";
 
 /**
- * Dedicated section for the phone bridge.
+ * One place for everything the lecture notebook needs.
  *
- * It used to live at the bottom of Advanced settings, behind the experimental
- * toggle and below ten other groups, so the start button sat past the fold.
- * A section of its own puts the code and the button one click from the sidebar.
+ * These controls also exist in General, Advanced and Post-processing, where
+ * they belong to dictation. Duplicating them here is deliberate: a student
+ * setting up a lecture should not have to know that the microphone lives in
+ * General, silence handling in Advanced and the AI provider in Post-processing.
+ * Both copies write the same setting, so they never drift.
  */
 export const LectureNotebookSettings: React.FC = () => {
   const { t } = useTranslation();
@@ -17,6 +24,17 @@ export const LectureNotebookSettings: React.FC = () => {
     <div className="vt-stack">
       <SettingsGroup title={t("settings.notebook.link.title")}>
         <PhoneLinkCard />
+      </SettingsGroup>
+
+      <SettingsGroup title={t("settings.notebook.recording.title")}>
+        <MicrophoneSelector descriptionMode="tooltip" grouped={true} />
+        <LanguageModeSetting descriptionMode="tooltip" grouped={true} />
+        <VoiceActivityDetection descriptionMode="tooltip" grouped={true} />
+        <FillerWordRemoval descriptionMode="tooltip" grouped={true} />
+      </SettingsGroup>
+
+      <SettingsGroup title={t("settings.notebook.ai.title")}>
+        <PostProcessingSettingsApi />
       </SettingsGroup>
 
       <SettingsGroup title={t("settings.notebook.steps.title")}>

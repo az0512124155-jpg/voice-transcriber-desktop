@@ -26,6 +26,7 @@ import { LazyStreamClose } from "../LazyStreamClose";
 import { AirPodsMode } from "../AirPodsMode";
 import { FillerWordRemoval } from "../FillerWordRemoval";
 import { VadBackendSelector } from "../VadBackendSelector";
+import { PhoneLinkCard } from "../PhoneLinkCard";
 
 export const AdvancedSettings: React.FC = () => {
   const { t } = useTranslation();
@@ -78,6 +79,12 @@ export const AdvancedSettings: React.FC = () => {
           <AirPodsMode descriptionMode="tooltip" grouped={true} />
           <VadBackendSelector descriptionMode="tooltip" grouped={true} />
           <LanguageDetection descriptionMode="tooltip" grouped={true} />
+        </SettingsGroup>
+      )}
+
+      {experimentalEnabled && (
+        <SettingsGroup title="מחברת שיעור">
+          <PhoneLinkCard />
         </SettingsGroup>
       )}
     </div>

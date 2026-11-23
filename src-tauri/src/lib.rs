@@ -20,6 +20,7 @@ mod memory;
 mod notices;
 mod overlay;
 mod paste_tx;
+mod phone_link;
 pub mod portable;
 mod secure_input;
 mod settings;
@@ -890,6 +891,9 @@ pub fn run(cli_args: CliArgs) {
             notices::get_active_notices,
             notices::dismiss_notice,
             notices::dismiss_overlay_notice,
+            phone_link::phone_link_start,
+            phone_link::phone_link_stop,
+            phone_link::phone_link_status,
         ])
         .events(collect_events![
             managers::history::HistoryUpdatePayload,

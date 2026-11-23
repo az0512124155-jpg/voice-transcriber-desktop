@@ -1110,6 +1110,25 @@ async dismissNotice(source: NoticeSource, code: NoticeCode) : Promise<void> {
  */
 async dismissOverlayNotice() : Promise<void> {
     await TAURI_INVOKE("dismiss_overlay_notice");
+},
+async phoneLinkStart(port: number | null) : Promise<Result<PhoneLinkStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("phone_link_start", { port }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async phoneLinkStop() : Promise<Result<PhoneLinkStatus, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("phone_link_stop") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async phoneLinkStatus() : Promise<PhoneLinkStatus> {
+    return await TAURI_INVOKE("phone_link_status");
 }
 }
 
@@ -1261,6 +1280,7 @@ export type AutoUnavailableReason =
 { kind: "no_match" }
 export type AvailableAccelerators = { transcribe: string[]; gpu_devices: GpuDeviceOption[] }
 export type BindingResponse = { success: boolean; binding: ShortcutBinding | null; error: string | null }
+export type PhoneLinkStatus = { running: boolean; port: number; code: string | null; fingerprint: string | null }
 /**
  * Script applied to Mandarin and Cantonese output. Traditional carries its region
  * (Taiwan vs Hong Kong forms, e.g. 裡/裏) rather than guessing it.

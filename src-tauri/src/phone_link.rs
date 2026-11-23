@@ -27,8 +27,10 @@ const ALPHABET: &[u8; 30] = b"ABCDEFGHJKLMNPQRSTUVWXYZ234567";
 const CODE_TTL: Duration = Duration::from_secs(300);
 const MAX_ATTEMPTS: u32 = 5;
 const MAX_PAIRINGS: u32 = 6;
-/// Cap on one AI call. Must stay below the phone's 90 s read timeout.
-const ASK_TIMEOUT: Duration = Duration::from_secs(50);
+/// Cap on one AI call. Must stay below the phone's 90 s read timeout, but
+/// high enough that a slow-but-working provider still answers: a reasoning
+/// model on a busy endpoint routinely needs 40-70 s.
+const ASK_TIMEOUT: Duration = Duration::from_secs(70);
 const LOCK_TIME: Duration = Duration::from_secs(60);
 pub const DEFAULT_PORT: u16 = 38381;
 /// UDP port used only for LAN discovery beacons. No secrets travel on it.
@@ -303,7 +305,7 @@ async fn ask(State(state): State<ServerState>, headers: axum::http::HeaderMap, b
     // A slow provider must not leave the phone waiting indefinitely. The phone
     // client gives up at 90 s, so the bridge answers first with a clear message
     // instead of letting the request die on the far side.
-    let completion = tokio::time::timeout(
+    let completion = match tokio::time::timeout(
         ASK_TIMEOUT,
         crate::llm_client::send_chat_completion_with_schema(
             &provider,
@@ -316,7 +318,11 @@ async fn ask(State(state): State<ServerState>, headers: axum::http::HeaderMap, b
         ),
     )
     .await
-    .unwrap_or_else(|_| Err("provider timed out".to_string()));
+    {
+        Ok(result) => result,
+        // 504 נפרד מ־502: "איחר" אינו "נכשל", ולטלפון יש הודעה אחרת לכל מקרה.
+        Err(_) => return json_error(StatusCode::GATEWAY_TIMEOUT, "provider timed out"),
+    };
 
     match completion {
         Ok(Some(content)) => {
@@ -383,7 +389,7 @@ async fn summarize(State(state): State<ServerState>, headers: axum::http::Header
         "required": ["summary", "key_points"],
         "additionalProperties": false
     });
-    let completion = tokio::time::timeout(
+    let completion = match tokio::time::timeout(
         ASK_TIMEOUT,
         crate::llm_client::send_chat_completion_with_schema(
             &provider,
@@ -396,7 +402,10 @@ async fn summarize(State(state): State<ServerState>, headers: axum::http::Header
         ),
     )
     .await
-    .unwrap_or_else(|_| Err("provider timed out".to_string()));
+    {
+        Ok(result) => result,
+        Err(_) => return json_error(StatusCode::GATEWAY_TIMEOUT, "provider timed out"),
+    };
 
     match completion {
         Ok(Some(content)) => {

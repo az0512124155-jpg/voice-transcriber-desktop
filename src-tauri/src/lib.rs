@@ -1299,6 +1299,13 @@ pub fn run(cli_args: CliArgs) {
             }
             show_main_window(app);
         }
+        // יציאה אמיתית (Cmd+Q הוסב למעלה להסתרה, אבל יציאה מתפריט המגש
+        // או app.exit() עדיין מגיעים לכאן): חובה לכבות את גשר ה־HTTPS.
+        // אחרת נשאר פתוח ברשת המקומית שרת שמחזיק טוקן ויכול לשאול את ספק
+        // ה־AI גם כשהאפליקציה כבר לא נראית.
+        tauri::RunEvent::Exit => {
+            let _ = phone_link::phone_link_stop();
+        }
         // No transcription teardown on exit: transcribe.cpp runs only in the
         // worker process, which exits by itself as soon as this process's end
         // of its stdin closes, even if it is hung. Waiting on an unload here

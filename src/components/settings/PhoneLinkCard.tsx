@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { commands, type PhoneLinkStatus } from "../../bindings";
+import { Button } from "../ui/Button";
 
 const DEFAULT_STATUS: PhoneLinkStatus = {
   running: false,
@@ -8,8 +10,17 @@ const DEFAULT_STATUS: PhoneLinkStatus = {
   fingerprint: null,
 };
 
-/** Opt-in HTTPS bridge for the Android lecture notebook. */
+/**
+ * Opt-in HTTPS bridge for the Android lecture notebook.
+ *
+ * Built from the kit's own classes (`.vt-row`, `Button`). An earlier version
+ * used `vt-button` / `vt-p-4` / `vt-flex`, which are not part of this
+ * stylesheet — Tailwind here has no `vt` prefix, so every one of those classes
+ * was dead. The start button rendered as bare text with no fill or border,
+ * which is why it could not be found.
+ */
 export const PhoneLinkCard: React.FC = () => {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<PhoneLinkStatus>(DEFAULT_STATUS);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -41,67 +52,66 @@ export const PhoneLinkCard: React.FC = () => {
   };
 
   return (
-    <div className="vt-p-4 vt-flex vt-flex-col vt-gap-3">
-      <div>
-        <p className="vt-text-sm vt-font-medium">
-          חיבור למחברת השיעור בטלפון
-        </p>
-        <p className="vt-text-xs vt-text-secondary vt-mt-1">
-          שרת HTTPS מקומי, כבה בכניסה למחשב. רק טקסט עובר — שום אודיו לא נשלח
-          מהטלפון. דורש ספק AI מוגדר בהגדרות כדי לענות על שאלות ולכתוב סיכומים.
-        </p>
+    <>
+      <div className="vt-row">
+        <div className="vt-row__text">
+          <p className="vt-row__title">{t("settings.notebook.link.rowTitle")}</p>
+          <p className="vt-row__description">
+            {t("settings.notebook.link.rowDescription")}
+          </p>
+        </div>
+        <div className="vt-row__control">
+          {status.running ? (
+            <Button
+              variant="secondary"
+              onClick={() => void stop()}
+              disabled={busy}
+            >
+              {t("settings.notebook.link.stop")}
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              onClick={() => void start()}
+              disabled={busy}
+            >
+              {t("settings.notebook.link.start")}
+            </Button>
+          )}
+        </div>
       </div>
 
       {status.running && status.code && (
-        <div className="vt-rounded-lg vt-border vt-border-logo-primary/40 vt-p-3">
-          <p className="vt-text-xs vt-text-secondary">קוד זיווג חד־פעמי</p>
-          <p className="vt-text-2xl vt-tracking-widest vt-font-medium vt-mt-1">
-            {status.code}
+        <div className="vt-row vt-row--stacked">
+          <p className="vt-row__description">
+            {t("settings.notebook.link.codeLabel")}
           </p>
-          <p className="vt-text-xs vt-text-secondary vt-mt-2">
-            תוקף 5 דקות · נעילה אחרי 5 ניסיונות שגויים
+          <p className="vt-phone-code">{status.code}</p>
+          <p className="vt-row__description">
+            {t("settings.notebook.link.codeHint")}
           </p>
-          <p className="vt-text-xs vt-mt-3">
-            בטלפון: מחברת שיעור ← חבר למחשב. האפליקציה מאתרת את המחשב לבד —
-            כל מה שצריך להקליד הוא הקוד הזה.
-          </p>
-          <p className="vt-text-xs vt-text-secondary vt-mt-1">
-            אין צורך בהעתקת כתובת IP או טביעת אצבע. שני המכשירים חייבים להיות
-            על אותה רשת Wi-Fi.
-          </p>
-          {status.fingerprint && (
-            <details className="vt-mt-2">
-              <summary className="vt-text-xs vt-text-secondary vt-cursor-pointer">
-                פרטים טכניים
-              </summary>
-              <p className="vt-text-xs vt-mt-1 vt-break-all">
-                טביעת אישור: <code>{status.fingerprint}</code>
-              </p>
-            </details>
-          )}
         </div>
       )}
 
-      {error && <p className="vt-text-xs vt-text-danger">{error}</p>}
+      {status.running && status.fingerprint && (
+        <div className="vt-row vt-row--stacked">
+          <details>
+            <summary className="vt-row__description vt-phone-details">
+              {t("settings.notebook.link.technical")}
+            </summary>
+            <p className="vt-row__description vt-phone-fingerprint">
+              {t("settings.notebook.link.fingerprint")}{" "}
+              <code>{status.fingerprint}</code>
+            </p>
+          </details>
+        </div>
+      )}
 
-      <div className="vt-flex vt-gap-2">
-        <button
-          type="button"
-          disabled={busy || status.running}
-          onClick={() => void start()}
-          className="vt-button vt-button--primary"
-        >
-          הפעל חיבור
-        </button>
-        <button
-          type="button"
-          disabled={busy || !status.running}
-          onClick={() => void stop()}
-          className="vt-button"
-        >
-          כבה
-        </button>
-      </div>
-    </div>
+      {error && (
+        <div className="vt-row vt-row--stacked">
+          <p className="vt-row__description vt-phone-error">{error}</p>
+        </div>
+      )}
+    </>
   );
 };

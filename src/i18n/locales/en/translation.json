@@ -19,7 +19,8 @@
     "postProcessing": "Post Process",
     "history": "History",
     "debug": "Debug",
-    "about": "About"
+    "about": "About",
+    "notebook": "Lecture notebook"
   },
   "onboarding": {
     "customModelDescription": "Not officially supported",
@@ -914,6 +915,35 @@
           "description": "sherpa-onnx · ONNX Runtime · Ivrit Zipformer, running on this computer.",
           "details": "Voice Transcriber's local speech-to-text runs on sherpa-onnx and ONNX Runtime. Thanks to the amazing work by the k2-fsa and sherpa-onnx contributors."
         }
+      }
+    },
+    "notebook": {
+      "link": {
+        "title": "Phone connection",
+        "rowTitle": "Connect the lecture notebook on your phone",
+        "rowDescription": "A local HTTPS server on this computer. Text only — no audio ever leaves the phone.",
+        "start": "Start connection",
+        "stop": "Stop",
+        "codeLabel": "One-time pairing code",
+        "codeHint": "Valid for 5 minutes · locked after 5 wrong attempts",
+        "technical": "Technical details",
+        "fingerprint": "Certificate fingerprint:"
+      },
+      "steps": {
+        "title": "How to connect",
+        "one": {
+          "title": "1. Start the connection",
+          "description": "Press “Start connection”. The code appears in the card above."
+        },
+        "two": {
+          "title": "2. Allow it through the firewall",
+          "description": "Windows will ask whether to allow network access. Allow it for private networks — without that the phone cannot find this computer."
+        },
+        "three": {
+          "title": "3. Type the code on the phone",
+          "description": "On the phone: Lecture notebook → Connect to computer. The app finds this computer by itself; there is no IP address or fingerprint to copy."
+        },
+        "note": "Answers and summaries need an AI provider configured in settings."
       }
     }
   },

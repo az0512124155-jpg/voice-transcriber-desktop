@@ -849,6 +849,18 @@ fn default_post_process_providers() -> Vec<PostProcessProvider> {
             supports_structured_output: true,
             api_format: PostProcessApiFormat::OpenAi,
         },
+        PostProcessProvider {
+            // NVIDIA NIM cloud endpoints (build.nvidia.com) speak the OpenAI
+            // chat-completions dialect, so no new transport is needed. Models
+            // are listed per account at /v1/models and require the same key.
+            id: "nvidia".to_string(),
+            label: "NVIDIA NIM".to_string(),
+            base_url: "https://integrate.api.nvidia.com/v1".to_string(),
+            allow_base_url_edit: false,
+            models_endpoint: Some("/models".to_string()),
+            supports_structured_output: false,
+            api_format: PostProcessApiFormat::OpenAi,
+        },
     ];
 
     // Note: We always include Apple Intelligence on macOS ARM64 without checking availability

@@ -1949,3 +1949,38 @@
     -webkit-animation: none;
   }
 }
+
+/* ------------------------------------------------------- phone link card -- */
+
+/* The pairing code is read off the screen and typed on a phone, so it is set
+   large and widely spaced. `direction: ltr` keeps the letter order intact when
+   the UI is Hebrew, and the negative inline-end margin takes back the trailing
+   letter-space so the block still looks centred. */
+.vt-phone-code {
+  margin: 6px 0 0 0;
+  color: var(--color-text);
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.34em;
+  margin-inline-end: -0.34em;
+  font-variant-numeric: tabular-nums;
+  direction: ltr;
+  unicode-bidi: isolate;
+  user-select: text;
+}
+
+.vt-phone-details {
+  cursor: pointer;
+  user-select: none;
+}
+
+.vt-phone-fingerprint {
+  margin-top: 6px;
+  word-break: break-all;
+  user-select: text;
+}
+
+.vt-phone-error {
+  color: var(--color-error);
+}

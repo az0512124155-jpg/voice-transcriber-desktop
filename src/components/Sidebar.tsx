@@ -1,6 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import {
+  BookOpen,
   Cog,
   FlaskConical,
   History,
@@ -18,6 +19,7 @@ import {
   AboutSettings,
   PostProcessingSettings,
   ModelsSettings,
+  LectureNotebookSettings,
 } from "./settings";
 
 export type SidebarSection = keyof typeof SECTIONS_CONFIG;
@@ -49,6 +51,12 @@ export const SECTIONS_CONFIG = {
     labelKey: "sidebar.history",
     icon: History,
     component: HistorySettings,
+    enabled: () => true,
+  },
+  notebook: {
+    labelKey: "sidebar.notebook",
+    icon: BookOpen,
+    component: LectureNotebookSettings,
     enabled: () => true,
   },
   models: {
